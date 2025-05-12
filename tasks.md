@@ -8,3 +8,16 @@
 Done, can Run website and have working pre-commit
 
 </details>
+
+<details>
+<summary>Fetch Card via API</summary>
+
+- Task
+  Fetch given card from db as a test, show card data and image
+
+- Done when:
+  There is a field for card name
+  Page calls card
+  Page shows card data and image
+
+</details>
