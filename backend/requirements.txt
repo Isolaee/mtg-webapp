@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+Flask-SQLAlchemy
+sqlite3
+json
+requests
