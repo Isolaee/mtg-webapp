@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from ..db.models import Card  # Assuming Card is a model defined in models.py
-from ..db import db_session  # Assuming db_session is a SQLAlchemy session
+from ..db import db
 
 api = Blueprint('api', __name__)
 
@@ -20,8 +20,8 @@ def get_card(card_id):
 def create_card():
     data = request.json
     new_card = Card(**data)  # Assuming data matches the Card model fields
-    db_session.add(new_card)
-    db_session.commit()
+    db.session.add(new_card)
+    db.session.commit()
     return jsonify(new_card.to_dict()), 201
 
 @api.route('/cards/<int:card_id>', methods=['PUT'])
@@ -33,7 +33,7 @@ def update_card(card_id):
     data = request.json
     for key, value in data.items():
         setattr(card, key, value)
-    db_session.commit()
+    db.session.commit()
     return jsonify(card.to_dict())
 
 @api.route('/cards/<int:card_id>', methods=['DELETE'])
@@ -42,6 +42,8 @@ def delete_card(card_id):
     if not card:
         return jsonify({'error': 'Card not found'}), 404
 
-    db_session.delete(card)
-    db_session.commit()
+    db.session.delete(card)
+    db.session.commit()
     return jsonify({'message': 'Card deleted successfully'})
+
+api_bp = api

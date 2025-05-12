@@ -40,11 +40,3 @@ To get started with the frontend application, follow these steps:
 ## API Integration
 
 The frontend communicates with the backend using the REST API. The API functions are defined in `src/api.js`, and they handle requests to fetch card data and other related operations.
-
-## Contributing
-
-If you would like to contribute to the project, please fork the repository and submit a pull request with your changes. Ensure that your code adheres to the project's coding standards and includes appropriate tests.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for more details.

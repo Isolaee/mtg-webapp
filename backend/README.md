@@ -48,11 +48,3 @@ The server will start on `http://localhost:5000` by default.
 ## Database
 
 The backend uses SQLite as the database. The database file is located in the `database/` directory.
-
-## Contributing
-
-Contributions are welcome! Please submit a pull request or open an issue for any improvements or bug fixes.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.

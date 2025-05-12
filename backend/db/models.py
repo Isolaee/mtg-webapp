@@ -1,6 +1,4 @@
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
+from backend.db import db
 
 class Card(db.Model):
     __tablename__ = 'cards'
