@@ -23,14 +23,20 @@ frontend/dist/
 backend/.pytest_cache/
 *.log
 
+# Test output and coverage
+.coverage
+htmlcov/
+coverage.xml
+
 # OS files
 .DS_Store
 Thumbs.db
 
-# IDE files
+# IDE/editor files
 .vscode/
 .idea/
 *.swp
 
-# Environment variables
+# Environment variables and secrets
 .env
+.env.*
