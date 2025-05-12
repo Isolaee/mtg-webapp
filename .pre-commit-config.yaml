@@ -34,3 +34,4 @@ repos:
         entry: pytest
         language: system
         types: [python]
+        files: ^tests/|test_.*\.py$|.*_test\.py$ # Runs tests only in the tests directory or files that start with test_ or end with _test
