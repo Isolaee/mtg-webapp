@@ -79,11 +79,3 @@ mtg-webapp
 ## API Documentation
 
 The backend provides a REST API for interacting with the card database. Refer to the `backend/api/routes.py` file for the available endpoints and their usage.
-
-## Contributing
-
-Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for more details.
