@@ -9,6 +9,7 @@ api = Blueprint("api", __name__)
 def get_cards():
     name = request.args.get("name")
     if name:
+        name = name.lower()
         cards = CardModel.query.filter_by(name=name).all()
     else:
         cards = CardModel.query.all()
