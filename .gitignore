@@ -15,7 +15,6 @@ ENV/
 
 # Node modules
 frontend/node_modules/
-node_modules/
 
 # Build output
 frontend/build/

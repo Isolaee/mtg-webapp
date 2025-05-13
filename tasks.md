@@ -23,3 +23,16 @@ Done, can Run website and have working pre-commit
 Done
 
 </details>
+
+<details>
+<summary>Create multiple pages</summary>
+
+- Task:
+  Create atleast two pages (Or in React Single Page application, different components)
+
+- Done when:
+  You can change pages are test function works.
+
+Done
+
+</details>
