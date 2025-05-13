@@ -82,3 +82,44 @@
 
 - [x]
 </details>
+
+<details>
+<summary>Users</summary>
+
+- Task:
+  Create a user/users
+
+  - Users can register
+  - Login
+  - Load deck
+  - save deck
+
+  decks are personal.
+
+<details>
+<summary>Subtask - register</summary>
+
+- [x]
+</details>
+
+<details>
+<summary>Subtask - login</summary>
+
+- [x]
+</details>
+
+<details>
+<summary>Subtask - whoami</summary>
+
+- [x]
+</details>
+
+<details>
+<summary>Subtask - Post deck</summary>
+</details>
+
+<details>
+<summary>Subtask - get deck</summary>
+</details>
+
+</details>
