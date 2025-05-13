@@ -9,6 +9,8 @@ api = Blueprint("api", __name__)
 @api.route("/cards", methods=["GET"])
 def get_cards():
     name = request.args.get("name")
+    if name is not None and name.strip() == "":
+        return jsonify({"error": "Name parameter is empty"}), 400
     if name:
         names = [n.strip().lower() for n in name.split(";")]
         filters = [CardModel.name.ilike(f"%{n}%") for n in names if n]
