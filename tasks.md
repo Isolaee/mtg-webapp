@@ -50,5 +50,5 @@
   User can search multiple cards at once.
   Output is shown as card list, that has dynamic lenght.
 
-- []
+- [x]
 </details>
