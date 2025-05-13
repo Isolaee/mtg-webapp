@@ -52,3 +52,19 @@
 
 - [x]
 </details>
+
+<details>
+<summary>Create tests for get_cards</summary>
+
+- Task:
+  Create tests for get_cards method.
+
+  - correct input
+  - empty input
+  - non-charecter input.
+
+  - Done When:
+    Tests are done and run.
+
+- []
+</details>
