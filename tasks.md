@@ -80,5 +80,5 @@
   Stakc len is dynamic.
   Highlight is working.
 
-- []
+- [x]
 </details>
