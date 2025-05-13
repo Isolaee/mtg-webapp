@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from sqlalchemy import or_
 from ..db.models import CardModel
 from ..db import db
 
@@ -9,8 +10,9 @@ api = Blueprint("api", __name__)
 def get_cards():
     name = request.args.get("name")
     if name:
-        name = name.lower()
-        cards = CardModel.query.filter_by(name=name).all()
+        names = [n.strip().lower() for n in name.split(";")]
+        filters = [CardModel.name.ilike(f"%{n}%") for n in names if n]
+        cards = CardModel.query.filter(or_(*filters)).all()
     else:
         cards = CardModel.query.all()
     return jsonify([card.to_dict() for card in cards])

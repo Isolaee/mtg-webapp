@@ -5,7 +5,7 @@
 - Get dummy page running
 - Setup Venv (Tests, QA, per-commit)
 
-Done, can Run website and have working pre-commit
+- [x], can Run website and have working pre-commit
 
 </details>
 
@@ -20,7 +20,7 @@ Done, can Run website and have working pre-commit
   Page calls card
   Page shows card data and image
 
-Done
+- [x]
 
 </details>
 
@@ -33,6 +33,22 @@ Done
 - Done when:
   You can change pages are test function works.
 
-Done
+- [x]
 
+</details>
+
+<details>
+<summary>Find multiple cards & card List</summary>
+
+- Task:
+  Create Method for searcing multiple cards.
+
+  - Done by partial search trought API
+    Create card list. Multiple cards on top of each other. Data and image.
+
+- Done When:
+  User can search multiple cards at once.
+  Output is shown as card list, that has dynamic lenght.
+
+- []
 </details>
