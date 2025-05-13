@@ -68,3 +68,17 @@
 
 - [x]
 </details>
+
+<details>
+<summary>Visual stack</summary>
+
+- Task
+  Create react componen for showing images as visual stack. User can highlight image by clicking it.
+
+- Done When:
+  There is visual stack in test page.
+  Stakc len is dynamic.
+  Highlight is working.
+
+- []
+</details>
