@@ -25,12 +25,14 @@ const MAJOR_TYPES = [
 ];
 
 function getMajorType(card: Card): string | null {
-  // Try typeline first, fallback to cardType
-  const typeLine = card.typeline || card.cardType || "";
-  const found = MAJOR_TYPES.find((type) =>
-    typeLine.toLowerCase().includes(type.toLowerCase()),
-  );
-  return found || null;
+  // Only check cardType for major types
+  if (card.cardType) {
+    const found = MAJOR_TYPES.find((type) =>
+      card.cardType!.toLowerCase().includes(type.toLowerCase()),
+    );
+    return found || null;
+  }
+  return null;
 }
 
 const StackVisualizer: React.FC<StackVisualizerProps> = ({
