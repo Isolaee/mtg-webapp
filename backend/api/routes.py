@@ -20,7 +20,6 @@ api = Blueprint("api", __name__)
 
 # Regex patterns for parsing card names and types
 regex_engine_card = re.compile(r"(?P<amount>\d+)x?,?\s+(?P<name>.+)")
-regex_engine_type = re.compile(r"^(?P<CardType>\w+?)\s*(-|—|$)\s*(?P<CreatureType>.+)?")
 
 
 @api.route("/register", methods=["POST"])
