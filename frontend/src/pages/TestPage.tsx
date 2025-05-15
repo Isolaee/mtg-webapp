@@ -4,18 +4,48 @@ import StackVisualizer from "../components/visualStack";
 import FindCardForm from "../components/FindCard";
 
 function TestPageFindCard() {
-  const [cards, setCards] = useState<Card[]>([]);
+  const [deck, setDeck] = useState<Card[]>([]);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
-  // Extract only the image URLs (filter out undefined)
-  const imageUrls = cards
-    .map((card) => card.image)
-    .filter((img): img is string => Boolean(img));
+  const handleAddCards = (cards: Card[]) => {
+    setDeck((prev) => [...prev, ...cards]);
+  };
 
   return (
-    <div className="App">
-      <h1>Magic: The Gathering Web App</h1>
-      <FindCardForm onCardsFound={setCards} />
-      <StackVisualizer images={imageUrls} />
+    <div>
+      <h1>Test Page: Find and Visualize Cards</h1>
+      <FindCardForm onCardsFound={handleAddCards} />
+      <div style={{ margin: "2em 0" }}>
+        <StackVisualizer
+          cards={deck}
+          format="EDH"
+          commanderName={deck.length > 0 ? deck[0].name : ""}
+        />
+      </div>
+      <div>
+        <h2>Deck List</h2>
+        {deck.map((card, idx) => (
+          <button
+            key={idx}
+            style={{ margin: "0.25em" }}
+            onClick={() => setSelectedCard(card)}
+          >
+            {card.name}
+          </button>
+        ))}
+      </div>
+      {selectedCard && (
+        <div>
+          <h3>{selectedCard.name}</h3>
+          {selectedCard.image && (
+            <img
+              src={selectedCard.image}
+              alt={selectedCard.name}
+              style={{ maxWidth: 200, display: "block", marginBottom: "1em" }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

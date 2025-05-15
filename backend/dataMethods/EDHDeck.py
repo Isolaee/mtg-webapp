@@ -119,16 +119,21 @@ class EDHDeck(MTGDeck):
 
         # Check singleton rule
         singleton_exceptions = [
-            "Plains",
-            "Island",
-            "Swamp",
-            "Mountain",
-            "Forest",
-            "Snow-Covered Plains",
-            "Snow-Covered Island",
-            "Snow-Covered Swamp",
-            "Snow-Covered Mountain",
-            "Snow-Covered Forest",
+            "plains",
+            "island",
+            "swamp",
+            "mountain",
+            "forest",
+            "snow-covered plains",
+            "snow-covered island",
+            "snow-covered swamp",
+            "snow-covered mountain",
+            "snow-covered forest",
+            "persistent petitioners",
+            "dragon's approach",
+            "rat colony",
+            "relentless rats",
+            "shadowborn apostle",
         ]
         duplicates = [
             item
@@ -144,7 +149,8 @@ class EDHDeck(MTGDeck):
         # Check color identity rule
         commander_color_identity = set(self.commander.getColorIdentity())
         invalid_cards = [
-            card.getName()
+            # card.getName()
+            self.getName()
             for card in self.cards
             if not set(card.getColorIdentity()).issubset(commander_color_identity)
         ]

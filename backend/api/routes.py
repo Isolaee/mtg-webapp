@@ -6,12 +6,21 @@ from flask_jwt_extended import (
 )
 from passlib.hash import bcrypt
 from sqlalchemy import or_
-from ..db.models import CardModel, UserModel
+from ..db.models import CardModel, UserModel, DeckModel
 from ..db import db
 import json
+import tempfile
+import os
+import re
+
+from ..dataMethods.DeckService import DeckService
 
 
 api = Blueprint("api", __name__)
+
+# Regex patterns for parsing card names and types
+regex_engine_card = re.compile(r"(?P<amount>\d+)x?,?\s+(?P<name>.+)")
+regex_engine_type = re.compile(r"^(?P<CardType>\w+?)\s*(-|—|$)\s*(?P<CreatureType>.+)?")
 
 
 @api.route("/register", methods=["POST"])
@@ -108,14 +117,79 @@ def upload_deck():
     if "deckfile" not in request.files:
         return jsonify({"msg": "No file uploaded"}), 400
     file = request.files["deckfile"]
+
+    format = request.form.get("format", "EDH")
+    commander_name = request.form.get("commander_name", "")
+    deck_name = request.form.get("deck_name", "Uploaded Deck")
+
+    # Save the uploaded file to a temporary location
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp:
+        file.save(temp)
+        temp_path = temp.name
+
     try:
-        content = file.read().decode("utf-8")
-        # Example: parse as JSON array of cards
-        cards = json.loads(content)
-        # Optionally validate cards here
-        return jsonify({"cards": cards}), 200
+        # Call your DeckParser method
+        deck_obj = DeckService.CreateDeckFromDB(
+            file_path=temp_path,
+            deck_name=deck_name,
+            format=format,
+            commander_name=commander_name,
+            regex_engine_card=regex_engine_card,
+        )
+
+        # Clean up the temp file
+        os.remove(temp_path)
+
+        # Return the deck as a dict
+        return jsonify(deck_obj.to_dict()), 200
+
     except Exception as e:
+        os.remove(temp_path)
         return jsonify({"msg": f"Invalid file: {str(e)}"}), 400
+
+
+@api.route("/save_deck", methods=["POST"])
+def save_deck():
+    if "deckfile" not in request.files:
+        return jsonify({"msg": "No file uploaded"}), 400
+    file = request.files["deckfile"]
+
+    format = request.form.get("format", "EDH")
+    commander_name = request.form.get("commander_name", "")
+    deck_name = request.form.get("deck_name", "Uploaded Deck")
+    deck_description = request.form.get("deck_description", "")
+
+    # Save the uploaded file to a temporary location
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp:
+        file.save(temp)
+        temp_path = temp.name
+
+    try:
+        # Parse and validate the deck
+        deck_obj = DeckService.CreateDeckFromDB(
+            file_path=temp_path,
+            deck_name=deck_name,
+            format=format,
+            commander_name=commander_name,
+            regex_engine_card=regex_engine_card,
+        )
+
+        new_deck = DeckModel(
+            name=deck_name,
+            description=deck_description,
+            format=format,
+            commander=commander_name,
+            cards=json.dumps([card.to_dict() for card in deck_obj.cards]),
+        )
+        db.session.add(new_deck)
+        db.session.commit()
+
+        os.remove(temp_path)
+        return jsonify({"msg": "Deck saved successfully!"}), 200
+
+    except Exception as e:
+        os.remove(temp_path)
+        return jsonify({"msg": f"Failed to save deck: {str(e)}"}), 400
 
 
 api_bp = api

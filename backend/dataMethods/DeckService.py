@@ -1,10 +1,13 @@
+from .MTGDeck import MTGDeck
 from .EDHDeck import EDHDeck
+from .PioneerDeck import PioneerDeck
 from .MTGCard import MTGCard
+from .DBService import DBService
 from pathlib import Path
 import json
 
 
-class DeckParser:
+class DeckService:
     """Utility class for parsing deck lists."""
 
     @staticmethod
@@ -230,6 +233,7 @@ class DeckParser:
         with open(file_path, "r") as file:
             i = 0
             for line in file:
+                line = line.lower()
                 try:
                     match = regex_engine_card.search(line)
                     if not match:
@@ -255,12 +259,11 @@ class DeckParser:
     ) -> EDHDeck:
 
         cards: list = []
-
         commander = commander_name
 
-        namesDict = DeckParser.CreateDictkWithList(file_path, regex_engine_card)
+        namesDict = DeckService.CreateDictkWithList(file_path, regex_engine_card)
 
-        cardsDict = DeckParser.find_line_with_name(namesDict)
+        cardsDict = DeckService.find_line_with_name(namesDict)
 
         for card_name, card_data in cardsDict.items():
             if card_name not in namesDict:
@@ -367,7 +370,7 @@ class DeckParser:
         Returns:
             MTGCard: An MTGCard object, or raises an exception if the card is not found.
         """
-        card_data = DeckParser.get_card_from_db(card_name)
+        card_data = DeckService.get_card_from_db(card_name)
 
         if not card_data:
             raise ValueError(f"Card '{card_name}' not found in the database.")
@@ -401,3 +404,70 @@ class DeckParser:
             ),  # Convert JSON string back to dict
             image=card_data["image"],
         )
+
+    # Create a deck from a file. For all formats
+    @staticmethod
+    def CreateDeckFromDB(
+        file_path: str,
+        deck_name: str,
+        format: str,
+        commander_name: str,
+        regex_engine_card,
+    ) -> MTGDeck:
+        """
+        Create a deck object from a file containing card names and quantities.
+        The format (e.g., "commander", "pioneer") is passed as a parameter.
+        """
+
+        cards: list = []
+        commanderCard = None
+
+        namesDict = DeckService.CreateDictkWithList(file_path, regex_engine_card)
+
+        for card_name, card_data in namesDict.items():
+            quantity = card_data.get("quantity", 0)  # default to 1 if not found
+
+            # Validate quantity
+            if not isinstance(quantity, int) or quantity <= 0:
+                print(
+                    f"[DEBUG] Invalid quantity '{quantity}' for card '{card_name}'. Skipping."
+                )
+                continue
+
+            # Retrieve the card from the database
+            matching_cards = DBService.get_card_from_db(card_name, strict=True)
+
+            if not matching_cards:
+                raise ValueError(f"Card '{card_name}' not found in the database.")
+            for _ in range(quantity):
+                cards.append(matching_cards[0])
+
+        for card in cards:
+            if card.name.strip().lower() == commander_name.strip().lower():
+                commanderCard = card
+                break
+
+        # Choose deck class based on format
+        format_lower = format.lower()
+        if format_lower == "commander":
+
+            deck = EDHDeck(
+                name=deck_name, format=format, cards=cards, commander=commanderCard
+            )
+        elif format_lower == "pioneer":
+            deck = PioneerDeck(
+                name=deck_name,
+                format=format,
+                cards=cards,
+            )
+        else:
+            print(f"[DEBUG] Unknown format '{format}'")
+
+        # Check for format legality if the deck class supports it
+        if hasattr(deck, "enforceFormatRules"):
+            isValid, error = deck.enforceFormatRules()
+            if not isValid:
+                print(f"[DEBUG] Format check failed: {error}")
+                raise ValueError(error)
+
+        return deck

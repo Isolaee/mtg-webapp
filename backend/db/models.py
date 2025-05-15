@@ -27,8 +27,9 @@ class CardModel(db.Model, MTGCard):
 class DeckModel(db.Model):
     __tablename__ = "decks"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, nullable=False)
+    description = db.Column(db.String)
     format = db.Column(db.String, nullable=False)
     commander = db.Column(db.JSON)
     cards = db.Column(db.JSON)

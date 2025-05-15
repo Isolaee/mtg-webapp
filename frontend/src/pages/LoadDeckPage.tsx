@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import StackVisualizer from "../components/visualStack";
+import LoadDeckForm from "../components/LoadDeckForm";
 
 interface Card {
   name: string;
@@ -10,6 +11,10 @@ interface Card {
 const LoadDeckPage: React.FC = () => {
   const [deck, setDeck] = useState<Card[]>([]);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [format, setFormat] = useState("commander");
+  const [commanderName, setCommanderName] = useState("");
+  const [deckName, setDeckName] = useState("");
+  const [deckDescription, setDeckDescription] = useState("");
 
   // Handle file upload and parse deck
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,6 +23,12 @@ const LoadDeckPage: React.FC = () => {
 
     const formData = new FormData();
     formData.append("deckfile", file);
+    formData.append("format", format);
+    formData.append("deck_name", deckName);
+    formData.append("deck_description", deckDescription);
+    if (format === "commander") {
+      formData.append("commander_name", commanderName);
+    }
 
     try {
       const res = await fetch("http://localhost:5000/api/upload_deck", {
@@ -39,35 +50,24 @@ const LoadDeckPage: React.FC = () => {
   return (
     <div>
       <h1>Load Deck</h1>
-      {/* File input */}
-      <div style={{ marginBottom: "1em" }}>
-        <label
-          style={{
-            display: "inline-block",
-            padding: "0.5em 1em",
-            background: "#1976d2",
-            color: "#fff",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
-        >
-          Load Deck File
-          <input
-            type="file"
-            accept=".txt"
-            onChange={handleFileChange}
-            style={{ display: "none" }}
-          />
-        </label>
-      </div>
-
+      <LoadDeckForm
+        format={format}
+        setFormat={setFormat}
+        commanderName={commanderName}
+        setCommanderName={setCommanderName}
+        deckName={deckName}
+        setDeckName={setDeckName}
+        deckDescription={deckDescription}
+        setDeckDescription={setDeckDescription}
+        onFileChange={handleFileChange}
+      />
       {/* Deck view */}
       <div style={{ marginBottom: "1em" }}>
         <h2>Deck View</h2>
         <StackVisualizer
-          images={deck
-            .map((card) => card.image)
-            .filter((img): img is string => Boolean(img))}
+          cards={deck}
+          format={format}
+          commanderName={commanderName}
         />
         <div style={{ marginTop: "1em" }}>
           {deck.map((card, idx) => (
