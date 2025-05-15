@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import StackVisualizer from "../components/visualStack";
 import LoadDeckForm from "../components/LoadDeckForm";
+import DeckStats from "../components/DeckStats";
 
 interface Card {
   name: string;
@@ -74,6 +75,8 @@ const LoadDeckPage: React.FC = () => {
           format={format}
           commanderName={commanderName}
         />
+        {/* DeckStats right below visual stack */}
+        <DeckStats cards={deck} />
         <div style={{ marginTop: "1em" }}>
           {deck.map((card, idx) => (
             <button
