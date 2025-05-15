@@ -42,15 +42,20 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
 }) => {
   const [highlighted, setHighlighted] = useState<string | null>(null);
 
-  // Exclude commander from creatures if EDH
+  // Find the commander card (case-insensitive)
+  const commanderCard = commanderName
+    ? cards.find(
+        (card) =>
+          card.name.trim().toLowerCase() === commanderName.trim().toLowerCase(),
+      )
+    : null;
+
+  // Exclude commander from all stacks if commanderName is set
   let filteredCards = cards;
-  if (format?.toLowerCase() === "edh" && commanderName) {
+  if (commanderName) {
     filteredCards = cards.filter(
       (card) =>
-        !(
-          getMajorType(card) === "Creature" &&
-          card.name.trim().toLowerCase() === commanderName.trim().toLowerCase()
-        ),
+        card.name.trim().toLowerCase() !== commanderName.trim().toLowerCase(),
     );
   }
 
@@ -66,9 +71,37 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
     }
   });
 
-  return filteredCards.length === 0 ? null : (
+  return filteredCards.length === 0 && !commanderCard ? null : (
     <div>
       <h2>Visual Stack</h2>
+      {/* Commander card display */}
+      {commanderCard && (
+        <div
+          style={{ display: "flex", alignItems: "center", marginBottom: "1em" }}
+        >
+          <div style={{ marginRight: "2em", textAlign: "left" }}>
+            <div style={{ fontWeight: "bold", marginBottom: 4 }}>Commander</div>
+            <img
+              src={commanderCard.image}
+              alt={commanderCard.name}
+              style={{
+                border: "4px solid #ff9800",
+                borderRadius: 8,
+                boxShadow: "0 0 12px #ff9800",
+                width: 100,
+                height: 140,
+                background: "#fff",
+                marginBottom: 4,
+              }}
+              title={commanderCard.name}
+            />
+            <div style={{ fontSize: 16, fontWeight: 500 }}>
+              {commanderCard.name}
+            </div>
+          </div>
+          {/* The rest of the stack will follow to the right */}
+        </div>
+      )}
       <div
         style={{
           display: "flex",
