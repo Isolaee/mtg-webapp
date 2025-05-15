@@ -64,7 +64,7 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
     }
   });
 
-  return (
+  return filteredCards.length === 0 ? null : (
     <div>
       <h2>Visual Stack</h2>
       <div
