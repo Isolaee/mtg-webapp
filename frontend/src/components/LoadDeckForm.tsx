@@ -25,10 +25,12 @@ const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Save deck handler
   const handleSaveDeck = async () => {
     setSaving(true);
+    setErrorMsg(null);
     const formData = new FormData();
     formData.append("deck_name", deckName);
     formData.append("deck_description", deckDescription);
@@ -47,12 +49,12 @@ const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
         body: formData,
       });
       if (!res.ok) {
-        alert("Failed to save deck.");
+        setErrorMsg("Failed to save deck.");
       } else {
         alert("Deck saved!");
       }
     } catch {
-      alert("Network error.");
+      setErrorMsg("Network error.");
     } finally {
       setSaving(false);
     }
@@ -158,6 +160,9 @@ const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
       >
         {saving ? "Saving..." : "Save"}
       </button>
+      {errorMsg && (
+        <div style={{ color: "red", marginTop: "1em" }}>{errorMsg}</div>
+      )}
     </div>
   );
 };

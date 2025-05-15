@@ -15,9 +15,11 @@ const LoadDeckPage: React.FC = () => {
   const [commanderName, setCommanderName] = useState("");
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Handle file upload and parse deck
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMsg(null); // Clear previous error
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -36,14 +38,17 @@ const LoadDeckPage: React.FC = () => {
         body: formData,
       });
       if (!res.ok) {
-        alert("Failed to upload deck file.");
+        const err = await res.json();
+        setErrorMsg(
+          err["msg, upload deck"] || err.msg || "Failed to upload deck file.",
+        );
         return;
       }
       const data = await res.json();
       setDeck(data.cards); // Expecting backend to return { cards: [...] }
       setSelectedCard(null);
     } catch {
-      alert("Network error.");
+      setErrorMsg("Network error.");
     }
   };
 
@@ -103,6 +108,8 @@ const LoadDeckPage: React.FC = () => {
           <div>Select a card to view details.</div>
         )}
       </div>
+      {/* Error message */}
+      {errorMsg && <div style={{ color: "red" }}>{errorMsg}</div>}
     </div>
   );
 };
