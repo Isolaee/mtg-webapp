@@ -226,10 +226,9 @@ class DBService:
         Search for cards in the database by their name and return MTGCard objects.
         """
         if strict:
-            search_pattern = card_name.strip()
+            search_pattern = card_name.strip().lower()
         else:
-            search_pattern = f"%{card_name.strip()}%"
-
+            search_pattern = f"%{card_name.strip().lower()}%"
         conn = sqlite3.connect(database_path)
         cursor = conn.cursor()
 
@@ -258,15 +257,12 @@ class DBService:
                         toughness=row[6],
                         oracleText=row[7],
                         loyalty=row[8],
-                        typeline=row[9],
+                        supertype=row[9],
+                        typeline=row[11],
                         cardType=row[10],
-                        cardFaces=json.loads(row[11]),
-                        allParts=json.loads(row[12]),
-                        layout=row[13],
-                        artist=row[14],
-                        scryfallid=None,
-                        legalities=json.loads(row[15]),
-                        image=row[16],
+                        artist=row[12],
+                        legalities=json.loads(row[13]),
+                        image=row[14],
                     )
                     for row in rows
                 ]

@@ -425,15 +425,13 @@ class DeckService:
         namesDict = DeckService.CreateDictkWithList(file_path, regex_engine_card)
 
         for card_name, card_data in namesDict.items():
-            quantity = card_data.get("quantity", 0)  # default to 1 if not found
-
-            # Validate quantity
-            if not isinstance(quantity, int) or quantity <= 0:
+            # Check if 'quantity' key exists and is a valid positive integer
+            quantity = card_data.get("quantity")
+            if quantity is None or not isinstance(quantity, int) or quantity <= 0:
                 print(
-                    f"[DEBUG] Invalid quantity '{quantity}' for card '{card_name}'. Skipping."
+                    f"[DEBUG] Missing or invalid quantity for card '{card_name}'. Skipping."
                 )
                 continue
-
             # Retrieve the card from the database
             matching_cards = DBService.get_card_from_db(card_name, strict=True)
 
@@ -450,7 +448,6 @@ class DeckService:
         # Choose deck class based on format
         format_lower = format.lower()
         if format_lower == "commander":
-
             deck = EDHDeck(
                 name=deck_name, format=format, cards=cards, commander=commanderCard
             )

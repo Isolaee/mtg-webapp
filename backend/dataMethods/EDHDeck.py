@@ -135,9 +135,13 @@ class EDHDeck(MTGDeck):
             "relentless rats",
             "shadowborn apostle",
         ]
+        singleton_exceptions = [name.lower() for name in singleton_exceptions]
+
         duplicates = [
             item
-            for item, count in Counter(self.getAllCardNames()).items()
+            for item, count in Counter(
+                name.lower() for name in self.getAllCardNames()
+            ).items()
             if count > 1 and item not in singleton_exceptions
         ]
         if duplicates:

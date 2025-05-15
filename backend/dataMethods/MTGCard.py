@@ -18,11 +18,8 @@ class MTGCard(PlayingCard):
         loyalty: str,
         typeline: str,
         cardType: str,
-        cardFaces: str,
-        allParts: str,
-        layout: str,
+        supertype: str,
         artist: str,
-        scryfallid: int,
         legalities: str,
         image: str,
     ) -> None:
@@ -39,11 +36,8 @@ class MTGCard(PlayingCard):
         self.loyalty = loyalty
         self.typeline = typeline
         self.cardType = cardType
-        self.cardFaces = cardFaces
-        self.allParts = allParts
-        self.layout = layout
+        self.supertype = supertype
         self.artist = artist
-        self.scryfallid = scryfallid
         self.legalities = legalities
         self.image = image
 
@@ -91,17 +85,9 @@ class MTGCard(PlayingCard):
         """Return the card type of the card."""
         return self.cardType
 
-    def getCardFaces(self) -> str:
-        """Return the card faces of the card."""
-        return self.cardFaces
-
-    def getAllParts(self) -> str:
-        """Return all parts of the card."""
-        return self.allParts
-
-    def getLayout(self) -> str:
-        """Return the layout of the card."""
-        return self.layout
+    def getSuperType(self) -> str:
+        """Return the supertype of the card."""
+        return self.supertype
 
     def getArtist(self) -> str:
         """Return the artist of the card."""
@@ -136,11 +122,7 @@ class MTGCard(PlayingCard):
             "loyalty": self.loyalty,
             "typeline": self.typeline,
             "cardType": self.cardType,
-            "cardFaces": self.cardFaces,
-            "allParts": self.allParts,
-            "layout": self.layout,
             "artist": self.artist,
-            "scryfallid": self.scryfallid,
             "legalities": self.legalities,
             "image": self.image,
         }

@@ -117,7 +117,7 @@ def upload_deck():
         return jsonify({"msg": "No file uploaded"}), 400
     file = request.files["deckfile"]
 
-    format = request.form.get("format", "EDH")
+    format = request.form.get("format", "commander")
     commander_name = request.form.get("commander_name", "")
     deck_name = request.form.get("deck_name", "Uploaded Deck")
 
@@ -144,7 +144,7 @@ def upload_deck():
 
     except Exception as e:
         os.remove(temp_path)
-        return jsonify({"msg": f"Invalid file: {str(e)}"}), 400
+        return jsonify({"msg, upload deck": f"Invalid file: {str(e)}"}), 400
 
 
 @api.route("/save_deck", methods=["POST"])
@@ -188,7 +188,7 @@ def save_deck():
 
     except Exception as e:
         os.remove(temp_path)
-        return jsonify({"msg": f"Failed to save deck: {str(e)}"}), 400
+        return jsonify({"msg, save deck": f"Failed to save deck: {str(e)}"}), 400
 
 
 api_bp = api
