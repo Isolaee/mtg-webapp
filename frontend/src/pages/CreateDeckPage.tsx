@@ -4,27 +4,58 @@ import SuggestionList from "../components/foundCardsContainer";
 import StackVisualizer from "../components/visualStack";
 import { Card } from "../api";
 
+interface DeckEntry {
+  card: Card;
+  count: number;
+}
+
 const CreateDeckPage: React.FC = () => {
-  const [deck, setDeck] = useState<Card[]>([]);
+  const [deck, setDeck] = useState<DeckEntry[]>([]);
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
   const [suggestions, setSuggestions] = useState<Card[]>([]);
 
-  const handleAddCards = (cards: Card[]) => {
-    setDeck((prev) => [...prev, ...cards]);
-  };
-
   const handleAddToDeck = (card: Card) => {
-    setDeck((prev) => [...prev, card]);
+    setDeck((prev) => {
+      const idx = prev.findIndex((entry) => entry.card.name === card.name);
+      if (idx !== -1) {
+        // Card already in deck, increment count
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], count: updated[idx].count + 1 };
+        return updated;
+      } else {
+        // New card
+        return [...prev, { card, count: 1 }];
+      }
+    });
   };
 
-  const handleRemoveCard = (index: number) => {
-    setDeck((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveCard = (name: string) => {
+    setDeck((prev) => {
+      const idx = prev.findIndex((entry) => entry.card.name === name);
+      if (idx !== -1) {
+        if (prev[idx].count > 1) {
+          // Decrement count
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], count: updated[idx].count - 1 };
+          return updated;
+        } else {
+          // Remove card
+          return prev.filter((entry) => entry.card.name !== name);
+        }
+      }
+      return prev;
+    });
   };
 
   const handleSaveDeck = async () => {
     // Implement save logic here (e.g., call your backend API)
-    alert(`Saving deck "${deckName}" with ${deck.length} cards!`);
+    alert(
+      `Saving deck "${deckName}" with ${deck.reduce(
+        (sum, entry) => sum + entry.count,
+        0,
+      )} cards!`,
+    );
   };
 
   return (
@@ -49,19 +80,23 @@ const CreateDeckPage: React.FC = () => {
       <SuggestionList suggestions={suggestions} onAddToDeck={handleAddToDeck} />
       <h2>Deck List</h2>
       <ul>
-        {deck.map((card, idx) => (
-          <li key={idx}>
-            {card.name}
+        {deck.map((entry) => (
+          <li key={entry.card.name}>
+            {entry.card.name} x{entry.count}
             <button
               style={{ marginLeft: "1em" }}
-              onClick={() => handleRemoveCard(idx)}
+              onClick={() => handleRemoveCard(entry.card.name)}
             >
               Remove
             </button>
           </li>
         ))}
       </ul>
-      <StackVisualizer cards={deck} format="EDH" commanderName="" />
+      <StackVisualizer
+        cards={deck.flatMap((entry) => Array(entry.count).fill(entry.card))}
+        format="EDH"
+        commanderName=""
+      />
       <button
         onClick={handleSaveDeck}
         disabled={!deckName || deck.length === 0}
