@@ -1,14 +1,21 @@
 import React, { useState } from "react";
 import FindCardForm from "../components/FindCard";
+import SuggestionList from "../components/foundCardsContainer";
+import StackVisualizer from "../components/visualStack";
 import { Card } from "../api";
 
 const CreateDeckPage: React.FC = () => {
   const [deck, setDeck] = useState<Card[]>([]);
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
+  const [suggestions, setSuggestions] = useState<Card[]>([]);
 
   const handleAddCards = (cards: Card[]) => {
     setDeck((prev) => [...prev, ...cards]);
+  };
+
+  const handleAddToDeck = (card: Card) => {
+    setDeck((prev) => [...prev, card]);
   };
 
   const handleRemoveCard = (index: number) => {
@@ -38,7 +45,8 @@ const CreateDeckPage: React.FC = () => {
           onChange={(e) => setDeckDescription(e.target.value)}
         />
       </div>
-      <FindCardForm onCardsFound={handleAddCards} />
+      <FindCardForm onCardsFound={setSuggestions} />
+      <SuggestionList suggestions={suggestions} onAddToDeck={handleAddToDeck} />
       <h2>Deck List</h2>
       <ul>
         {deck.map((card, idx) => (
@@ -53,6 +61,7 @@ const CreateDeckPage: React.FC = () => {
           </li>
         ))}
       </ul>
+      <StackVisualizer cards={deck} format="EDH" commanderName="" />
       <button
         onClick={handleSaveDeck}
         disabled={!deckName || deck.length === 0}
