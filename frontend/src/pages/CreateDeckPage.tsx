@@ -3,6 +3,7 @@ import FindCardForm from "../components/FindCard";
 import SuggestionList from "../components/foundCardsContainer";
 import StackVisualizer from "../components/visualStack";
 import DeckStats from "../components/DeckStats";
+import FormatSelection from "../components/FormatSelection";
 import { Card } from "../api";
 
 interface DeckEntry {
@@ -14,6 +15,7 @@ const CreateDeckPage: React.FC = () => {
   const [deck, setDeck] = useState<DeckEntry[]>([]);
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
+  const [format, setFormat] = useState("commander");
   const [suggestions, setSuggestions] = useState<Card[]>([]);
 
   const handleAddToDeck = (card: Card) => {
@@ -63,6 +65,9 @@ const CreateDeckPage: React.FC = () => {
     <div>
       <h1>Create Deck</h1>
       <div style={{ marginBottom: "1em" }}>
+        <FormatSelection value={format} onChange={setFormat} />
+      </div>
+      <div style={{ marginBottom: "1em" }}>
         <input
           type="text"
           placeholder="Deck Name"
@@ -95,7 +100,7 @@ const CreateDeckPage: React.FC = () => {
       </ul>
       <StackVisualizer
         cards={deck.flatMap((entry) => Array(entry.count).fill(entry.card))}
-        format="EDH"
+        format={format}
         commanderName=""
       />
       <button
