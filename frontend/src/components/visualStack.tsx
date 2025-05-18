@@ -109,6 +109,7 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
           gap: "2em",
           alignItems: "flex-start",
           justifyContent: "center",
+          marginBottom: "3em",
         }}
       >
         {MAJOR_TYPES.map((type) => {

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import FindCardForm from "../components/FindCard";
 import SuggestionList from "../components/foundCardsContainer";
 import StackVisualizer from "../components/visualStack";
+import DeckStats from "../components/DeckStats";
 import { Card } from "../api";
 
 interface DeckEntry {
@@ -104,6 +105,10 @@ const CreateDeckPage: React.FC = () => {
       >
         Save Deck
       </button>
+      {/* DeckStats below Save Deck button */}
+      <DeckStats
+        cards={deck.flatMap((entry) => Array(entry.count).fill(entry.card))}
+      />
     </div>
   );
 };
