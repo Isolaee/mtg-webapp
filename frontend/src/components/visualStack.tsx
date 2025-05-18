@@ -42,17 +42,18 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
 }) => {
   const [highlighted, setHighlighted] = useState<string | null>(null);
 
-  // Find the commander card (case-insensitive)
-  const commanderCard = commanderName
+  // Only find commander if format is commander and commanderName is set
+  const showCommander = format === "commander" && commanderName;
+  const commanderCard = showCommander
     ? cards.find(
         (card) =>
           card.name.trim().toLowerCase() === commanderName.trim().toLowerCase(),
       )
     : null;
 
-  // Exclude commander from all stacks if commanderName is set
+  // Exclude commander from all stacks if commander is shown
   let filteredCards = cards;
-  if (commanderName) {
+  if (showCommander) {
     filteredCards = cards.filter(
       (card) =>
         card.name.trim().toLowerCase() !== commanderName.trim().toLowerCase(),
@@ -75,7 +76,7 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
     <div>
       <h2>Visual Stack</h2>
       {/* Commander card display */}
-      {commanderCard && (
+      {showCommander && commanderCard && (
         <div
           style={{ display: "flex", alignItems: "center", marginBottom: "1em" }}
         >
@@ -99,7 +100,6 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
               {commanderCard.name}
             </div>
           </div>
-          {/* The rest of the stack will follow to the right */}
         </div>
       )}
       <div
