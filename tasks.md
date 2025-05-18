@@ -116,10 +116,16 @@
 
 <details>
 <summary>Subtask - Post deck</summary>
+
+- [x]
 </details>
 
 <details>
 <summary>Subtask - get deck</summary>
+
+- [x]
 </details>
+
+You can now load Decks from text file, or from database. Deck is shown in visual stack
 
 </details>
