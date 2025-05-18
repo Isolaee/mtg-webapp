@@ -191,4 +191,41 @@ def save_deck():
         return jsonify({"msg, save deck": f"Failed to save deck: {str(e)}"}), 400
 
 
+@api.route("/list_decks", methods=["GET"])
+def list_decks():
+    decks = DeckModel.query.all()
+    return jsonify(
+        {
+            "decks": [
+                {"deck_name": deck.name, "deck_description": deck.description}
+                for deck in decks
+            ]
+        }
+    )
+
+
+@api.route("/load_deck", methods=["GET"])
+def load_deck_from_db():
+    deck_name = request.args.get("deck_name")
+    if not deck_name:
+        return jsonify({"msg": "Missing deck_name parameter"}), 400
+
+    deck = DeckModel.query.filter_by(name=deck_name).first()
+    if not deck:
+        return jsonify({"msg": "Deck not found"}), 404
+
+    return (
+        jsonify(
+            {
+                "deck_name": deck.name,
+                "deck_description": deck.description,
+                "format": deck.format,
+                "commander_name": deck.commander,
+                "cards": json.loads(deck.cards) if deck.cards else [],
+            }
+        ),
+        200,
+    )
+
+
 api_bp = api

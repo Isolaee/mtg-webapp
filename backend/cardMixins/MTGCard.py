@@ -45,18 +45,6 @@ class MTGCard:
         """Return the card type of the card."""
         return self.cardType
 
-    def getCardFaces(self):
-        """Return the card faces of the card."""
-        return self.cardFaces
-
-    def getAllParts(self):
-        """Return all parts of the card."""
-        return self.allParts
-
-    def getLayout(self):
-        """Return the layout of the card."""
-        return self.layout
-
     def getArtist(self):
         """Return the artist of the card."""
         return self.artist
@@ -90,9 +78,6 @@ class MTGCard:
             "loyalty": self.loyalty,
             "typeline": self.typeline,
             "cardType": self.cardType,
-            "cardFaces": self.cardFaces,
-            "allParts": self.allParts,
-            "layout": self.layout,
             "artist": self.artist,
             "legalities": self.legalities,
             "image": self.image,

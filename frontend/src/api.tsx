@@ -2,7 +2,6 @@ import axios from "axios";
 
 const API_BASE_URL = "http://localhost:5000/api";
 
-// Example interfaces (customize as needed)
 export interface Card {
   name: string;
   manacost?: string;
@@ -12,7 +11,7 @@ export interface Card {
   power?: string;
   toughness?: string;
   oracleText?: string;
-  image?: string; // <-- Add this line
+  image?: string;
   // Add other card fields here
 }
 

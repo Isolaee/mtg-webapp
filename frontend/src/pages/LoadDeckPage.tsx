@@ -53,6 +53,16 @@ const LoadDeckPage: React.FC = () => {
     }
   };
 
+  // Handle loading deck from database
+  const handleDeckLoaded = (deckData: any) => {
+    setDeck(deckData.cards || []);
+    setFormat(deckData.format || "commander");
+    setCommanderName(deckData.commander_name || "");
+    setDeckName(deckData.deck_name || "");
+    setDeckDescription(deckData.deck_description || "");
+    setSelectedCard(null);
+  };
+
   return (
     <div>
       <h1>Load Deck</h1>
@@ -66,6 +76,7 @@ const LoadDeckPage: React.FC = () => {
         deckDescription={deckDescription}
         setDeckDescription={setDeckDescription}
         onFileChange={handleFileChange}
+        onDeckLoaded={handleDeckLoaded}
       />
       {/* Deck view */}
       <div style={{ marginBottom: "1em" }}>
