@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import FindCardForm from "../components/FindCard";
-import SuggestionList from "../components/foundCardsContainer";
+import FoundCardsComponent from "../components/FoundCardsComponent";
 import StackVisualizer from "../components/visualStack";
 import DeckStats from "../components/DeckStats";
 import FormatSelection from "../components/FormatSelection";
@@ -17,6 +17,7 @@ const CreateDeckPage: React.FC = () => {
   const [deckDescription, setDeckDescription] = useState("");
   const [format, setFormat] = useState("commander");
   const [suggestions, setSuggestions] = useState<Card[]>([]);
+  const [commanderName, setCommanderName] = useState<string>("");
 
   const handleAddToDeck = (card: Card) => {
     setDeck((prev) => {
@@ -31,6 +32,10 @@ const CreateDeckPage: React.FC = () => {
         return [...prev, { card, count: 1 }];
       }
     });
+  };
+
+  const handleAddCommander = (card: Card) => {
+    setCommanderName(card.name);
   };
 
   const handleRemoveCard = (name: string) => {
@@ -83,7 +88,13 @@ const CreateDeckPage: React.FC = () => {
         />
       </div>
       <FindCardForm onCardsFound={setSuggestions} />
-      <SuggestionList suggestions={suggestions} onAddToDeck={handleAddToDeck} />
+      <FoundCardsComponent
+        suggestions={suggestions}
+        onAddToDeck={handleAddToDeck}
+        format={format}
+        commanderName={commanderName}
+        onAddCommander={handleAddCommander}
+      />
       <h2>Deck List</h2>
       <ul>
         {deck.map((entry) => (
@@ -101,7 +112,7 @@ const CreateDeckPage: React.FC = () => {
       <StackVisualizer
         cards={deck.flatMap((entry) => Array(entry.count).fill(entry.card))}
         format={format}
-        commanderName=""
+        commanderName={commanderName}
       />
       <button
         onClick={handleSaveDeck}
@@ -110,7 +121,6 @@ const CreateDeckPage: React.FC = () => {
       >
         Save Deck
       </button>
-      {/* DeckStats below Save Deck button */}
       <DeckStats
         cards={deck.flatMap((entry) => Array(entry.count).fill(entry.card))}
       />
