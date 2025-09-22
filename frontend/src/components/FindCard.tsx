@@ -44,16 +44,18 @@ const FindCardForm: React.FC<FindCardFormProps> = ({ onCardsFound }) => {
       >
         {loading ? "Loading..." : "Show Card"}
       </button>
-      <div
-        style={{
-          marginTop: "1em",
-          minHeight: "2em",
-          border: "1px solid black",
-          padding: "0.5em",
-        }}
-      >
-        {error && <span style={{ color: "red" }}>{error}</span>}
-      </div>
+      {error && (
+        <div
+          style={{
+            marginTop: "1em",
+            minHeight: "2em",
+            border: "1px solid black",
+            padding: "0.5em",
+          }}
+        >
+          <span style={{ color: "red" }}>{error}</span>
+        </div>
+      )}
     </div>
   );
 };

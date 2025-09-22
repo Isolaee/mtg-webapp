@@ -42,17 +42,18 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
 }) => {
   const [highlighted, setHighlighted] = useState<string | null>(null);
 
-  // Find the commander card (case-insensitive)
-  const commanderCard = commanderName
+  // Only find commander if format is commander and commanderName is set
+  const showCommander = format === "commander" && commanderName;
+  const commanderCard = showCommander
     ? cards.find(
         (card) =>
           card.name.trim().toLowerCase() === commanderName.trim().toLowerCase(),
       )
     : null;
 
-  // Exclude commander from all stacks if commanderName is set
+  // Exclude commander from all stacks if commander is shown
   let filteredCards = cards;
-  if (commanderName) {
+  if (showCommander) {
     filteredCards = cards.filter(
       (card) =>
         card.name.trim().toLowerCase() !== commanderName.trim().toLowerCase(),
@@ -75,7 +76,7 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
     <div>
       <h2>Visual Stack</h2>
       {/* Commander card display */}
-      {commanderCard && (
+      {showCommander && commanderCard && (
         <div
           style={{ display: "flex", alignItems: "center", marginBottom: "1em" }}
         >
@@ -99,7 +100,6 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
               {commanderCard.name}
             </div>
           </div>
-          {/* The rest of the stack will follow to the right */}
         </div>
       )}
       <div
@@ -109,23 +109,30 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
           gap: "2em",
           alignItems: "flex-start",
           justifyContent: "center",
+          marginBottom: "3em",
         }}
       >
         {MAJOR_TYPES.map((type) => {
-          // Sort so highlighted card is last (on top)
-          const sortedCards = [...grouped[type]];
-          if (highlighted) {
-            sortedCards.sort((a, b) =>
-              a.name === highlighted ? 1 : b.name === highlighted ? -1 : 0,
-            );
-          }
+          // Group cards by name and count them
+          const cardCountMap: {
+            [name: string]: { card: Card; count: number };
+          } = {};
+          grouped[type].forEach((card) => {
+            if (cardCountMap[card.name]) {
+              cardCountMap[card.name].count += 1;
+            } else {
+              cardCountMap[card.name] = { card, count: 1 };
+            }
+          });
+          const uniqueCards = Object.values(cardCountMap);
+
           return (
             <div
               key={type}
               style={{
                 minWidth: 90,
                 position: "relative",
-                height: 140 + (grouped[type].length - 1) * 30,
+                height: 140 + (uniqueCards.length - 1) * 30,
               }}
             >
               <h4 style={{ textAlign: "center", marginBottom: 8 }}>
@@ -135,22 +142,26 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
                 style={{
                   position: "relative",
                   width: 80,
-                  height: 140 + (grouped[type].length - 1) * 30,
+                  height: 140 + (uniqueCards.length - 1) * 30,
                 }}
               >
-                {sortedCards.map((card, idx) => {
-                  // Find the original index for stacking
-                  const origIdx = grouped[type].findIndex((c) => c === card);
-                  return (
+                {uniqueCards.map(({ card, count }, idx) => (
+                  <div
+                    key={card.name}
+                    style={{
+                      position: "absolute",
+                      top: idx * 30,
+                      left: highlighted === card.name ? 20 : 0, // Shift right if highlighted
+                      width: 80,
+                      zIndex: highlighted === card.name ? 1000 : 1,
+                      transition: "left 0.2s",
+                    }}
+                  >
                     <img
-                      key={card.name + origIdx}
                       src={card.image}
                       alt={card.name}
                       onClick={() => setHighlighted(card.name)}
                       style={{
-                        position: "absolute",
-                        top: origIdx * 30,
-                        left: 0,
                         border:
                           highlighted === card.name
                             ? "4px solid #007bff"
@@ -164,7 +175,6 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
                         width: 80,
                         height: 120,
                         background: "#fff",
-                        zIndex: highlighted === card.name ? 999 : origIdx,
                         transition: "border 0.2s, box-shadow 0.2s",
                         display: "block",
                         marginLeft: "auto",
@@ -172,8 +182,34 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({
                       }}
                       title={card.name}
                     />
-                  );
-                })}
+                    {count > 1 && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          right: 10,
+                          color: "#fff",
+                          background: "#222",
+                          borderRadius: "50%",
+                          width: 16,
+                          height: 16,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "bold",
+                          fontSize: 12,
+                          border: "2px solid #fff",
+                          boxShadow: "0 1px 4px #0008",
+                          zIndex: 1001,
+                          padding: 0,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           );
