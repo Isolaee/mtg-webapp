@@ -1,9 +1,20 @@
 import os
+import sys
+
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from backend.db import init_db
-from backend.api.routes import api_bp
+
+# Add the backend directory to the path for relative imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Use relative imports when running from backend directory
+try:
+    from backend.db import init_db
+    from backend.api.routes import api_bp
+except ImportError:
+    from db import init_db
+    from api.routes import api_bp
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
