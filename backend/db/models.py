@@ -1,5 +1,10 @@
-from backend.db import db
-from backend.cardMixins.MTGCard import MTGCard
+# Handle both relative and absolute imports
+try:
+    from backend.db import db
+    from backend.cardMixins.MTGCard import MTGCard
+except ImportError:
+    from db import db
+    from cardMixins.MTGCard import MTGCard
 
 
 class CardModel(db.Model, MTGCard):

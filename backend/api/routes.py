@@ -6,14 +6,20 @@ from flask_jwt_extended import (
 )
 from passlib.hash import bcrypt
 from sqlalchemy import or_
-from ..db.models import CardModel, UserModel, DeckModel
-from ..db import db
 import json
 import tempfile
 import os
 import re
 
-from ..dataMethods.DeckService import DeckService
+# Handle both relative and absolute imports
+try:
+    from ..db.models import CardModel, UserModel, DeckModel
+    from ..db import db
+    from ..dataMethods.DeckService import DeckService
+except ImportError:
+    from db.models import CardModel, UserModel, DeckModel
+    from db import db
+    from dataMethods.DeckService import DeckService
 
 
 api = Blueprint("api", __name__)
