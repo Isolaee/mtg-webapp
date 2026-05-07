@@ -27,5 +27,8 @@ async fn migrate_columns(pool: &SqlitePool) -> anyhow::Result<()> {
     )
     .execute(pool)
     .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN is_premium INTEGER NOT NULL DEFAULT 0")
+        .execute(pool)
+        .await;
     Ok(())
 }

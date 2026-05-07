@@ -1,8 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { AdMob } from "@capacitor-community/admob";
 import Nav from "./components/Nav";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdSlot from "./components/AdSlot";
+import AndroidBanner from "./components/AndroidBanner";
+import Footer from "./components/Footer";
 import { AuthProvider } from "./context/AuthContext";
 
 import HomePage from "./pages/HomePage";
@@ -17,11 +22,19 @@ import ProfilePage from "./pages/ProfilePage";
 import CollectionPage from "./pages/CollectionPage";
 import CollectionScanPage from "./pages/CollectionScanPage";
 
-const App: React.FC = () => (
-  <AuthProvider>
-    <Router>
+const SLOT_ID_LEADERBOARD = "XXXXXXXXXX"; // replace with AdSense leaderboard ad unit slot ID
+
+const AppInner: React.FC = () => {
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    AdMob.initialize({ initializeForTesting: false }).catch(() => {});
+  }, []);
+
+  return (
+    <>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5em" }}>
         <Nav />
+        <AdSlot slotId={SLOT_ID_LEADERBOARD} style={{ marginBottom: "0.5em" }} />
         <ErrorBoundary>
           <Routes>
             {/* Auth */}
@@ -70,6 +83,16 @@ const App: React.FC = () => (
           </Routes>
         </ErrorBoundary>
       </div>
+      <Footer />
+      <AndroidBanner />
+    </>
+  );
+};
+
+const App: React.FC = () => (
+  <AuthProvider>
+    <Router>
+      <AppInner />
     </Router>
   </AuthProvider>
 );

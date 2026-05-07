@@ -1,9 +1,26 @@
 use crate::models::User;
 use sqlx::SqlitePool;
 
+pub async fn ensure_premium_column(pool: &SqlitePool) -> anyhow::Result<()> {
+    // Ignore error if column already exists
+    sqlx::query("ALTER TABLE users ADD COLUMN is_premium INTEGER NOT NULL DEFAULT 0")
+        .execute(pool)
+        .await
+        .ok();
+    Ok(())
+}
+
+pub async fn set_premium(pool: &SqlitePool, username: &str) -> anyhow::Result<()> {
+    sqlx::query("UPDATE users SET is_premium=1 WHERE username=?")
+        .bind(username)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn find_by_username(pool: &SqlitePool, username: &str) -> anyhow::Result<Option<User>> {
     Ok(sqlx::query_as::<_, User>(
-        "SELECT id, username, password_hash, created_at FROM users WHERE username=?",
+        "SELECT id, username, password_hash, is_premium, created_at FROM users WHERE username=?",
     )
     .bind(username)
     .fetch_optional(pool)

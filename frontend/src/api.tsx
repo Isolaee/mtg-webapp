@@ -71,6 +71,7 @@ export interface UserProfile {
   created_at?: string;
   mtg_deck_count: number;
   rb_deck_count: number;
+  is_premium?: boolean;
 }
 
 export const fetchProfile = async (): Promise<UserProfile> => {
@@ -78,6 +79,14 @@ export const fetchProfile = async (): Promise<UserProfile> => {
     headers: authHeaders(),
   });
   return response.data;
+};
+
+export const activatePremium = async (purchaseToken: string): Promise<void> => {
+  await axios.post(
+    `${API_BASE_URL}/premium/activate`,
+    { purchase_token: purchaseToken },
+    { headers: authHeaders() },
+  );
 };
 
 export const changePassword = async (

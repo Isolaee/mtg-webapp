@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchProfile, changePassword, UserProfile } from "../api";
-import { T, panel } from "../theme";
+import { Capacitor } from "@capacitor/core";
+import { fetchProfile, changePassword, activatePremium, UserProfile } from "../api";
+import { useAuth } from "../context/AuthContext";
+import { T, panel, btn } from "../theme";
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { isPremium, refreshPremium } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -20,6 +25,23 @@ const ProfilePage: React.FC = () => {
       .then(setProfile)
       .catch(() => setLoadError("Could not load profile."));
   }, []);
+
+  const handlePurchasePremium = async () => {
+    setPurchaseError(null);
+    setPurchasing(true);
+    try {
+      // TODO: install an IAP plugin (e.g. @capgo/capacitor-purchases or cordova-plugin-purchase)
+      // and replace the line below with a real purchase call for product "remove_ads".
+      // After a confirmed purchase, call activatePremium with the purchase token.
+      // Example: const { purchaseToken } = await YourIAPPlugin.purchase({ productId: "remove_ads" });
+      await activatePremium("pending");
+      refreshPremium();
+    } catch {
+      setPurchaseError("Purchase failed. Please try again.");
+    } finally {
+      setPurchasing(false);
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +115,29 @@ const ProfilePage: React.FC = () => {
           <StatPill label="Riftbound Decks" value={profile.rb_deck_count} color={T.purple} onClick={() => navigate("/my-decks")} />
         </div>
       </div>
+
+      {/* Premium status */}
+      {isPremium ? (
+        <div style={{ ...panel, marginBottom: "1.5em", display: "flex", alignItems: "center", gap: "0.6em" }}>
+          <span style={{ color: T.green, fontSize: 18 }}>✓</span>
+          <span style={{ color: T.green, fontSize: 14, fontWeight: 600 }}>Premium — ads disabled. Thank you for your support!</span>
+        </div>
+      ) : Capacitor.isNativePlatform() ? (
+        <div style={{ ...panel, marginBottom: "1.5em" }}>
+          <h2 style={{ fontSize: "1em", color: T.gold, letterSpacing: "0.06em", marginBottom: "0.5em" }}>Remove Ads</h2>
+          <p style={{ color: T.textDim, fontSize: 13, marginBottom: "1em" }}>
+            One-time purchase to remove all ads permanently and support development.
+          </p>
+          {purchaseError && <div style={{ color: T.red, fontSize: 13, marginBottom: "0.75em" }}>{purchaseError}</div>}
+          <button
+            onClick={handlePurchasePremium}
+            disabled={purchasing}
+            style={{ ...btn.primary(T.gold), opacity: purchasing ? 0.6 : 1 }}
+          >
+            {purchasing ? "Processing…" : "Upgrade — Remove Ads"}
+          </button>
+        </div>
+      ) : null}
 
       {/* Change password */}
       <div style={panel}>

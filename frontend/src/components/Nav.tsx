@@ -76,6 +76,27 @@ const Nav: React.FC = () => {
 
         <div style={{ flex: 1 }} />
 
+        {/* Ko-Fi support link */}
+        <a
+          href="https://ko-fi.com/YOURUSERNAME"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.3em",
+            padding: "0 1em",
+            fontSize: 12,
+            color: T.textDim,
+            textDecoration: "none",
+            letterSpacing: "0.03em",
+            borderRight: `1px solid ${T.border}`,
+            whiteSpace: "nowrap",
+          }}
+        >
+          ♥ Support
+        </a>
+
         {/* User area */}
         {username ? (
           <div style={{ display: "flex", alignItems: "center", gap: "0.6em", padding: "0 1.2em" }}>

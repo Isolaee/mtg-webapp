@@ -58,6 +58,7 @@ pub fn router(pool: SqlitePool) -> Router {
         .route("/whoami", get(whoami))
         .route("/profile", get(profile))
         .route("/change-password", post(change_password))
+        .route("/premium/activate", post(activate_premium))
         .with_state(pool)
 }
 
@@ -146,6 +147,7 @@ async fn profile(
         "created_at": user.created_at,
         "mtg_deck_count": mtg_count,
         "rb_deck_count": rb_count,
+        "is_premium": user.is_premium.unwrap_or(0) == 1,
     }))
     .into_response()
 }
@@ -191,6 +193,32 @@ async fn change_password(
 
     match db::users::update_password(&pool, &username, &new_hash).await {
         Ok(_) => Json(serde_json::json!({"msg": "Password updated"})).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": e.to_string()}))).into_response(),
+    }
+}
+
+#[derive(Deserialize)]
+struct ActivatePremiumBody {
+    purchase_token: Option<String>,
+}
+
+async fn activate_premium(
+    State(pool): State<SqlitePool>,
+    headers: axum::http::HeaderMap,
+    Json(_body): Json<ActivatePremiumBody>,
+) -> impl IntoResponse {
+    let auth = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let username = match extract_username(auth) {
+        Ok(u) => u,
+        Err(_) => return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"msg": "Unauthorized"}))).into_response(),
+    };
+
+    match db::users::set_premium(&pool, &username).await {
+        Ok(_) => Json(serde_json::json!({"msg": "Premium activated"})).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": e.to_string()}))).into_response(),
     }
 }
