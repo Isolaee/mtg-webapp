@@ -8,6 +8,7 @@ import {
   RbDeckSummary,
 } from "../../api";
 import RbVisualStack, { DeckEntry } from "../../components/riftbound/RbVisualStack";
+import RbDeckStats, { validateDeck } from "../../components/riftbound/RbDeckStats";
 
 const FACTIONS = ["", "body", "calm", "chaos", "colorless", "fury", "mind", "order"];
 const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
@@ -176,6 +177,7 @@ const DeckBuilderPage: React.FC = () => {
 
   const mainTotal = mainDeck.reduce((n, e) => n + e.count, 0);
   const runeTotal = runeDeck.reduce((n, e) => n + e.count, 0);
+  const { valid: deckValid } = validateDeck(champion, mainDeck, runeDeck, battlefields);
 
   return (
     <div>
@@ -192,7 +194,7 @@ const DeckBuilderPage: React.FC = () => {
         />
         <button
           onClick={saveDeck}
-          disabled={!deckName.trim() || mainTotal === 0}
+          disabled={!deckName.trim() || !deckValid}
           style={{
             padding: "0.4em 1em",
             background: "#6d2a8c",
@@ -411,6 +413,14 @@ const DeckBuilderPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Stats + validation */}
+      <RbDeckStats
+        champion={champion}
+        mainDeck={mainDeck}
+        runeDeck={runeDeck}
+        battlefields={battlefields}
+      />
 
       {/* Visual stack */}
       <RbVisualStack
