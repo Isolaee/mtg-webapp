@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { T } from "../theme";
 
 const MTG_LINKS = [
-  { to: "/", label: "Home" },
   { to: "/cards", label: "Cards" },
   { to: "/deck-builder", label: "Deck Builder" },
   { to: "/my-decks", label: "My Decks" },
@@ -20,6 +19,7 @@ const Nav: React.FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { username, logout } = useAuth();
+  const isHome = pathname === "/";
   const isMtg = !pathname.startsWith("/riftbound");
   const subLinks = isMtg ? MTG_LINKS : RB_LINKS;
   const accentColor = isMtg ? T.blue : T.purple;
@@ -31,7 +31,7 @@ const Nav: React.FC = () => {
 
   return (
     <nav style={{ marginBottom: "2em" }}>
-      {/* Top bar: game tabs + user pill */}
+      {/* Top bar: logo + game tabs + user area */}
       <div
         style={{
           display: "flex",
@@ -40,8 +40,37 @@ const Nav: React.FC = () => {
           borderBottom: `1px solid ${T.borderGold}55`,
         }}
       >
-        <GameTab to="/" label="Magic: The Gathering" active={isMtg} color={T.blue} />
-        <GameTab to="/riftbound" label="Riftbound" active={!isMtg} color={T.purple} />
+        {/* Logo */}
+        <Link
+          to="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5em",
+            padding: "0 1.4em",
+            textDecoration: "none",
+            borderRight: `1px solid ${T.border}`,
+            flexShrink: 0,
+          }}
+        >
+          <LogoMark />
+          <span
+            style={{
+              fontFamily: "Cinzel, serif",
+              fontWeight: 700,
+              fontSize: "0.95em",
+              letterSpacing: "0.12em",
+              color: T.gold,
+              textTransform: "uppercase",
+            }}
+          >
+            TCG Builder
+          </span>
+        </Link>
+
+        {/* Game tabs */}
+        <GameTab to="/" label="Magic: The Gathering" active={!pathname.startsWith("/riftbound") && !isHome} color={T.blue} />
+        <GameTab to="/riftbound" label="Riftbound" active={pathname.startsWith("/riftbound")} color={T.purple} />
 
         <div style={{ flex: 1 }} />
 
@@ -117,42 +146,75 @@ const Nav: React.FC = () => {
         )}
       </div>
 
-      {/* Sub-navigation */}
-      <div
-        style={{
-          display: "flex",
-          gap: 0,
-          background: T.bg,
-          borderBottom: `1px solid ${T.border}`,
-          padding: "0 0.25em",
-        }}
-      >
-        {subLinks.map(({ to, label }) => {
-          const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-          return (
-            <Link
-              key={to}
-              to={to}
-              style={{
-                padding: "0.55em 1.1em",
-                textDecoration: "none",
-                fontWeight: active ? 700 : 400,
-                fontSize: "0.85em",
-                color: active ? accentColor : T.textDim,
-                borderBottom: active ? `2px solid ${accentColor}` : "2px solid transparent",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                transition: "color 0.15s, border-color 0.15s",
-              }}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </div>
+      {/* Sub-navigation — hidden on the landing page */}
+      {!isHome && (
+        <div
+          style={{
+            display: "flex",
+            gap: 0,
+            background: T.bg,
+            borderBottom: `1px solid ${T.border}`,
+            padding: "0 0.25em",
+          }}
+        >
+          {subLinks.map(({ to, label }) => {
+            const active = pathname === to || (to !== "/" && pathname.startsWith(to));
+            return (
+              <Link
+                key={to}
+                to={to}
+                style={{
+                  padding: "0.55em 1.1em",
+                  textDecoration: "none",
+                  fontWeight: active ? 700 : 400,
+                  fontSize: "0.85em",
+                  color: active ? accentColor : T.textDim,
+                  borderBottom: active ? `2px solid ${accentColor}` : "2px solid transparent",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  transition: "color 0.15s, border-color 0.15s",
+                }}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </nav>
   );
 };
+
+// Placeholder logo mark — replace with an <img> when a real asset is available
+const LogoMark: React.FC = () => (
+  <svg
+    width="28"
+    height="28"
+    viewBox="0 0 28 28"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    {/* Outer hexagon */}
+    <polygon
+      points="14,2 25,8 25,20 14,26 3,20 3,8"
+      fill="none"
+      stroke={T.gold}
+      strokeWidth="1.5"
+      opacity="0.8"
+    />
+    {/* Inner diamond */}
+    <polygon
+      points="14,7 20,14 14,21 8,14"
+      fill={`${T.gold}22`}
+      stroke={T.gold}
+      strokeWidth="1"
+      opacity="0.9"
+    />
+    {/* Center dot */}
+    <circle cx="14" cy="14" r="2" fill={T.gold} opacity="0.9" />
+  </svg>
+);
 
 interface GameTabProps {
   to: string;

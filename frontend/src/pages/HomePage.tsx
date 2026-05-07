@@ -2,83 +2,145 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { T } from "../theme";
 
-function HomePage() {
-  return (
-    <div>
-      <h1 style={{ fontSize: "2.2em", marginBottom: "0.2em" }}>TCG Builder</h1>
-      <p style={{ color: T.textDim, marginBottom: "2.5em", fontSize: "1.05em" }}>
-        Deck builder for Magic: The Gathering and Riftbound. Search cards, build lists, save your work.
-      </p>
-
-      <div style={{ display: "flex", gap: "1.5em", flexWrap: "wrap" }}>
-        <GameCard
-          title="Magic: The Gathering"
-          description="Browse 34,000+ cards, build decks, upload existing lists, and save to your account."
-          color={T.blue}
-          links={[
-            { to: "/cards", label: "Browse Cards" },
-            { to: "/deck-builder", label: "Deck Builder" },
-          ]}
-        />
-        <GameCard
-          title="Riftbound"
-          description="Browse all 950+ cards across OGN, OGS, SFD, and UNL sets. Build and save competitive decks."
-          color={T.purple}
-          links={[
-            { to: "/riftbound", label: "Browse Cards" },
-            { to: "/riftbound/deck-builder", label: "Deck Builder" },
-          ]}
-        />
+const HomePage: React.FC = () => (
+  <div>
+    {/* Hero */}
+    <div
+      style={{
+        textAlign: "center",
+        padding: "3.5em 1em 3em",
+        borderBottom: `1px solid ${T.border}`,
+        marginBottom: "2.5em",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "Cinzel, serif",
+          fontSize: "2.6em",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          color: T.goldLight,
+          marginBottom: "0.3em",
+          lineHeight: 1.15,
+        }}
+      >
+        TCG Builder
       </div>
+      <p
+        style={{
+          color: T.textDim,
+          fontSize: "1.05em",
+          maxWidth: 480,
+          margin: "0 auto",
+          lineHeight: 1.7,
+        }}
+      >
+        Browse cards, build decks, and save your collections for Magic: The Gathering and Riftbound.
+      </p>
     </div>
-  );
-}
 
-interface GameCardProps {
+    {/* Game cards */}
+    <div style={{ display: "flex", gap: "1.5em", flexWrap: "wrap" }}>
+      <GameSection
+        title="Magic: The Gathering"
+        tagline="34,000+ cards from all sets and formats"
+        color={T.blue}
+        features={["Search by name, type, and color", "Build and save decks", "Import existing lists from file", "Commander, Standard, Modern, and more"]}
+        links={[
+          { to: "/cards", label: "Browse Cards" },
+          { to: "/deck-builder", label: "Deck Builder" },
+        ]}
+      />
+      <GameSection
+        title="Riftbound"
+        tagline="950+ cards across OGN, OGS, SFD, and UNL sets"
+        color={T.purple}
+        features={["Filter by faction, type, rarity, and set", "Build champion + main + rune decks", "Deck validation and statistics", "Battlefield selection"]}
+        links={[
+          { to: "/riftbound", label: "Browse Cards" },
+          { to: "/riftbound/deck-builder", label: "Deck Builder" },
+        ]}
+      />
+    </div>
+  </div>
+);
+
+interface GameSectionProps {
   title: string;
-  description: string;
+  tagline: string;
   color: string;
+  features: string[];
   links: { to: string; label: string }[];
 }
 
-const GameCard: React.FC<GameCardProps> = ({ title, description, color, links }) => (
+const GameSection: React.FC<GameSectionProps> = ({ title, tagline, color, features, links }) => (
   <div
     style={{
-      flex: "1 1 320px",
+      flex: "1 1 340px",
       background: T.surface,
-      border: `1px solid ${color}44`,
+      border: `1px solid ${color}33`,
       borderTop: `3px solid ${color}`,
       borderRadius: 6,
-      padding: "1.8em",
+      padding: "1.8em 2em",
       display: "flex",
       flexDirection: "column",
-      gap: "0.8em",
+      gap: "1.1em",
     }}
   >
-    <h2
+    <div>
+      <h2
+        style={{
+          margin: "0 0 0.25em",
+          color,
+          fontSize: "1.15em",
+          fontFamily: "Cinzel, serif",
+          letterSpacing: "0.05em",
+        }}
+      >
+        {title}
+      </h2>
+      <p style={{ margin: 0, color: T.textDim, fontSize: "0.9em" }}>{tagline}</p>
+    </div>
+
+    <ul
       style={{
         margin: 0,
-        color,
-        fontSize: "1.15em",
-        fontFamily: "Cinzel, serif",
-        letterSpacing: "0.05em",
+        padding: 0,
+        listStyle: "none",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.4em",
       }}
     >
-      {title}
-    </h2>
-    <p style={{ color: T.text, margin: 0, fontSize: "0.95em", lineHeight: 1.6 }}>
-      {description}
-    </p>
-    <div style={{ display: "flex", gap: "0.6em", marginTop: "0.4em" }}>
-      {links.map(({ to, label }) => (
+      {features.map((f) => (
+        <li
+          key={f}
+          style={{
+            fontSize: "0.88em",
+            color: T.text,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "0.55em",
+          }}
+        >
+          <span style={{ color, marginTop: "0.1em", flexShrink: 0 }}>◆</span>
+          {f}
+        </li>
+      ))}
+    </ul>
+
+    <div style={{ display: "flex", gap: "0.7em", marginTop: "auto", paddingTop: "0.5em" }}>
+      {links.map(({ to, label }, i) => (
         <Link
           key={to}
           to={to}
           style={{
-            padding: "0.45em 1.2em",
-            background: `${color}22`,
-            color,
-            border: `1px solid ${color}66`,
+            flex: 1,
+            textAlign: "center",
+            padding: "0.55em 0",
+            background: i === 0 ? `${color}CC` : "transparent",
+            color: i === 0 ? T.bg : color,
+            border: `1px solid ${color}${i === 0 ? "" : "66"}`,
             borderRadius: 4,
             fontWeight: 700,
             fontSize: "0.85em",
