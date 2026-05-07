@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "tcg_website",
+  "project_id": "bd126a4f-a74f-414f-b28d-87b85197cbed"
+}

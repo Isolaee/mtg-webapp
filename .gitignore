@@ -40,3 +40,7 @@ Thumbs.db
 # Environment variables and secrets
 .env
 .env.*
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
