@@ -341,9 +341,101 @@ npx cap open android    # Build → Build APK(s) in Android Studio
 
 The CORS config in `backend-rust/src/main.rs` already allows `capacitor://localhost`.
 
+Before building the APK, complete the AdMob placeholder replacements in section 11.
+
 ---
 
-## 9. Database Backups
+## 9. Monetization Setup
+
+The app has four monetization components. Each has placeholder values in the code that must be replaced before going live.
+
+### Summary of placeholders
+
+| File | Placeholder | Replace with |
+|------|-------------|--------------|
+| `frontend/public/index.html` | `ca-pub-XXXXXXXXXXXXXXXX` | AdSense Publisher ID |
+| `frontend/src/components/AdSlot.tsx` | `ca-pub-XXXXXXXXXXXXXXXX` | AdSense Publisher ID |
+| `frontend/src/App.tsx` | `XXXXXXXXXX` (SLOT_ID_LEADERBOARD) | AdSense leaderboard ad unit slot ID |
+| `frontend/src/components/Footer.tsx` | `XXXXXXXXXX` (SLOT_ID_FOOTER) | AdSense footer ad unit slot ID |
+| `frontend/src/components/Footer.tsx` | `ko-fi.com/YOURUSERNAME` | Your Ko-Fi profile URL |
+| `frontend/src/components/Nav.tsx` | `ko-fi.com/YOURUSERNAME` | Your Ko-Fi profile URL |
+| `frontend/android/app/src/main/AndroidManifest.xml` | `ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX` | AdMob App ID |
+| `frontend/src/components/AndroidBanner.tsx` | `ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX` | AdMob Banner Ad Unit ID |
+
+---
+
+### Ko-Fi (do this first — takes 5 minutes)
+
+1. Sign up at [ko-fi.com](https://ko-fi.com) and set up your page
+2. Replace `YOURUSERNAME` in two files:
+   - `frontend/src/components/Nav.tsx`
+   - `frontend/src/components/Footer.tsx`
+3. Redeploy — Ko-Fi link appears immediately in the Nav and Footer on all platforms
+
+---
+
+### Google AdSense (web ads — apply after site is live)
+
+AdSense requires site review, which can take days to weeks. Apply once the site has real content and traffic.
+
+1. Sign up at [adsense.google.com](https://adsense.google.com)
+2. Add your site URL and follow the verification steps
+3. Once approved, go to **Ads → By ad unit → Create ad unit**:
+   - Create two **Display** responsive units: one for the leaderboard (below nav), one for the footer
+   - Note each unit's **Slot ID** (format: 10-digit number)
+4. Find your **Publisher ID** in AdSense → Account → Account information (format: `ca-pub-XXXXXXXXXXXXXXXX`)
+5. Replace the four AdSense placeholders listed in the summary table above
+6. Rebuild and redeploy
+
+> **Note:** `AdSlot` renders nothing in development and nothing for premium users. It only renders in production builds on web browsers.
+
+---
+
+### Google AdMob (Android ads — set up before APK release)
+
+AdMob is separate from AdSense but uses the same Google account.
+
+1. Sign up at [admob.google.com](https://admob.google.com)
+2. **Apps → Add app** → Android → Enter app name "TCG Builder" → not yet published
+3. Note the **App ID** (format: `ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX`)
+4. **Ad units → Add ad unit** → Banner → name it "Main Banner"
+5. Note the **Ad Unit ID** (format: `ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX`)
+6. Replace both AdMob placeholders in the summary table above
+7. Run `npm run build && npx cap sync android` and rebuild APK
+
+> **Testing:** During development, set `isTesting: true` in `AndroidBanner.tsx` to use Google's test ad IDs instead of your real ones. Set back to `false` before releasing.
+
+---
+
+### Premium tier / Remove Ads IAP (Android — requires Google Play account)
+
+The premium backend is complete (database column, API endpoint, UI). The only missing piece is wiring a real Google Play in-app purchase to the "Upgrade — Remove Ads" button on the Profile page.
+
+#### Steps
+
+1. **Google Play Console** — [play.google.com/console](https://play.google.com/console): create a developer account ($25 one-time fee)
+2. Create your app in Play Console and upload a signed APK to the **internal testing** track
+3. Go to **Monetize → Products → In-app products** → Create product:
+   - Product ID: `remove_ads`
+   - Type: **One-time** (non-consumable)
+   - Price: set the minimum (~$0.99 / €0.99)
+   - Status: **Active**
+4. Install an IAP plugin. Recommended: `cordova-plugin-purchase` (well-maintained, Capacitor-compatible):
+   ```bash
+   npm install cordova-plugin-purchase
+   npx cap sync android
+   ```
+5. In `frontend/src/pages/ProfilePage.tsx`, replace the stub `handlePurchasePremium` with a real purchase call using the plugin's API. The function must:
+   - Initiate purchase for product ID `remove_ads`
+   - On success, call `activatePremium(purchaseToken)` (already wired to `POST /api/premium/activate`)
+   - Call `refreshPremium()` to update the UI
+6. Rebuild and upload to Play Console for testing
+
+> **How premium works:** On successful purchase, the backend sets `is_premium = 1` for the user. `AuthContext` fetches this on every login and exposes `isPremium`. Both `AdSlot` (web) and `AndroidBanner` (Android) return null when `isPremium` is true — ads disappear immediately after purchase without requiring a restart.
+
+---
+
+## 10. Database Backups
 
 Add a daily backup cron on the server:
 
@@ -362,9 +454,9 @@ For off-server backup, install the [AWS CLI](https://docs.aws.amazon.com/cli/lat
 
 ---
 
-## 10. Deployment Checklist
+## 11. Deployment Checklist
 
-First-time setup:
+### Infrastructure
 - [ ] Lightsail instance created with static IP
 - [ ] Firewall ports 80, 443, 22 open
 - [ ] Nginx installed and configured
@@ -373,9 +465,26 @@ First-time setup:
 - [ ] Systemd service file created with real `JWT_SECRET`
 - [ ] GitHub secrets set (`LIGHTSAIL_HOST`, `LIGHTSAIL_USER`, `LIGHTSAIL_SSH_KEY`)
 - [ ] `.github/workflows/deploy.yml` created with correct domain
+
+### Initial data
 - [ ] Database copied to server (`scp database/mtg_card_db.db ...`)
 - [ ] First deploy pushed to `main` → CI passes
 - [ ] `hash_cards` binary run on server (for card scanning)
 
-Every deploy after that:
+### Monetization — web
+- [ ] Ko-Fi username replaced in `Nav.tsx` and `Footer.tsx`
+- [ ] AdSense account created and site approved
+- [ ] AdSense Publisher ID replaced in `index.html` and `AdSlot.tsx`
+- [ ] AdSense slot IDs replaced in `App.tsx` (leaderboard) and `Footer.tsx` (footer)
+
+### Monetization — Android
+- [ ] AdMob account created
+- [ ] AdMob App ID replaced in `AndroidManifest.xml`
+- [ ] AdMob Banner Unit ID replaced in `AndroidBanner.tsx`
+- [ ] Google Play Console account created ($25 one-time)
+- [ ] `remove_ads` non-consumable in-app product created and set to Active
+- [ ] IAP plugin installed and `handlePurchasePremium` stub replaced with real purchase call
+- [ ] APK signed and uploaded to Play Console internal testing track
+
+### Every deploy after first setup
 - Push to `main` → GitHub Actions builds and deploys automatically
