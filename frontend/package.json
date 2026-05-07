@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
+    "@capacitor/camera": "^8.2.0",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
     "@types/react": "^19.1.3",
