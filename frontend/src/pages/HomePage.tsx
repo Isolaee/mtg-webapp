@@ -1,115 +1,74 @@
-import React, { useState } from "react";
-import { useAuth } from "../context/AuthContext";
-
-const API_URL = "http://localhost:8080/api";
+import React from "react";
+import { Link } from "react-router-dom";
 
 function HomePage() {
-  const { token, login, logout } = useAuth();
-
-  // State for login/register form
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [isRegister, setIsRegister] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
-
-  // Handle login or register
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    setFormSuccess(null);
-
-    const endpoint = isRegister ? "/register" : "/login";
-    try {
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFormError(data.msg || "Unknown error");
-        return;
-      }
-      if (isRegister) {
-        setFormSuccess("Registration successful! You can now log in.");
-        setIsRegister(false);
-        setUsername("");
-        setPassword("");
-      } else {
-        login(data.access_token);
-        setUsername("");
-        setPassword("");
-      }
-    } catch (err) {
-      setFormError("Network error: " + (err as Error).message);
-    }
-  };
-
   return (
     <div className="App">
-      <h1>Magic: The Gathering Web App</h1>
+      <h1>TCG Web App</h1>
       <p>
-        <strong>About this site:</strong>
-        <br />
-        This is a web application for Magic: The Gathering players. You can
-        search for cards, view card details, and visualize your deck as a stack
-        of cards. Registered users can log in to save and load their personal
-        decks.
+        A deck builder for Magic: The Gathering and Riftbound. Search cards,
+        visualize your deck, and save your lists. Log in to save and load decks.
       </p>
-      <div style={{ margin: "1em 0" }}>
-        {token ? (
-          <>
-            <span style={{ marginRight: "1em" }}>Logged in</span>
-            <button onClick={logout}>Log out</button>
-          </>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ display: "inline-block" }}>
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              style={{ marginRight: "0.5em" }}
-              autoComplete="username"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ marginRight: "0.5em" }}
-              autoComplete={isRegister ? "new-password" : "current-password"}
-            />
-            <button type="submit">{isRegister ? "Register" : "Log in"}</button>
-            <button
-              type="button"
-              style={{ marginLeft: "0.5em" }}
-              onClick={() => {
-                setIsRegister(!isRegister);
-                setFormError(null);
-                setFormSuccess(null);
-              }}
-            >
-              {isRegister ? "Switch to Log in" : "Switch to Register"}
-            </button>
-            {formError && (
-              <div style={{ color: "red", marginTop: "0.5em" }}>
-                {formError}
-              </div>
-            )}
-            {formSuccess && (
-              <div style={{ color: "green", marginTop: "0.5em" }}>
-                {formSuccess}
-              </div>
-            )}
-          </form>
-        )}
+      <div style={{ display: "flex", gap: "2em", marginTop: "2em" }}>
+        <div
+          style={{
+            flex: 1,
+            padding: "1.5em",
+            border: "1px solid #1a5276",
+            borderRadius: 8,
+            background: "#eaf0fb",
+          }}
+        >
+          <h2 style={{ color: "#1a5276", marginTop: 0 }}>Magic: The Gathering</h2>
+          <p style={{ color: "#444", fontSize: "0.95em" }}>
+            Search the full card database, build decks, and visualize your stack.
+          </p>
+          <Link
+            to="/create-deck"
+            style={{
+              display: "inline-block",
+              padding: "0.5em 1.2em",
+              background: "#1a5276",
+              color: "#fff",
+              borderRadius: 6,
+              textDecoration: "none",
+              fontWeight: 700,
+              fontSize: "0.9em",
+            }}
+          >
+            Create Deck
+          </Link>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            padding: "1.5em",
+            border: "1px solid #6d2a8c",
+            borderRadius: 8,
+            background: "#f5eafb",
+          }}
+        >
+          <h2 style={{ color: "#6d2a8c", marginTop: 0 }}>Riftbound</h2>
+          <p style={{ color: "#444", fontSize: "0.95em" }}>
+            Browse all 950+ Riftbound cards and build decks for competitive play.
+          </p>
+          <Link
+            to="/riftbound/deck-builder"
+            style={{
+              display: "inline-block",
+              padding: "0.5em 1.2em",
+              background: "#6d2a8c",
+              color: "#fff",
+              borderRadius: 6,
+              textDecoration: "none",
+              fontWeight: 700,
+              fontSize: "0.9em",
+            }}
+          >
+            Deck Builder
+          </Link>
+        </div>
       </div>
-      <p>
-        Use the navigation above to explore features. Log in to access deck
-        saving and loading!
-      </p>
     </div>
   );
 }
