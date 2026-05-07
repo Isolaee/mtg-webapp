@@ -1,17 +1,5 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environment
-venv/
-env/
-ENV/
-.venv/
-
-# SQLite database
-*.db
-*.sqlite3
+# Rust
+backend-rust/target/
 
 # Node modules
 frontend/node_modules/
@@ -20,13 +8,7 @@ node_modules/
 # Build output
 frontend/build/
 frontend/dist/
-backend/.pytest_cache/
 *.log
-
-# Test output and coverage
-.coverage
-htmlcov/
-coverage.xml
 
 # OS files
 .DS_Store
