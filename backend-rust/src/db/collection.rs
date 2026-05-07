@@ -120,6 +120,24 @@ pub async fn update_by_id_and_user(
     Ok(q.execute(pool).await?.rows_affected())
 }
 
+pub struct HashRow {
+    pub game: String,
+    pub card_id: String,
+    pub phash: i64,
+}
+
+pub async fn find_all_hashes(pool: &SqlitePool) -> anyhow::Result<Vec<HashRow>> {
+    let rows = sqlx::query_as::<_, (String, String, i64)>(
+        "SELECT game, card_id, phash FROM card_hashes",
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|(game, card_id, phash)| HashRow { game, card_id, phash })
+        .collect())
+}
+
 pub async fn delete_by_id_and_user(
     pool: &SqlitePool,
     id: i64,
