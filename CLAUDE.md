@@ -1,6 +1,6 @@
-# Project Instructions for AI Agents
+# CLAUDE.md
 
-This file provides instructions and context for AI coding agents working on this project.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
@@ -49,57 +49,83 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
+---
 
 ## Build & Run
 
-### Rust Backend (target: `backend-rust/`)
+### Rust Backend (`backend-rust/`)
+
 ```bash
-cargo build                  # build
-cargo run                    # run on :8080
-cargo watch -x run           # hot reload (cargo-watch)
-cargo test                   # run tests
-cargo clippy                 # lint
+DATABASE_URL="sqlite:../database/mtg_card_db.db" cargo run       # run on :8080
+DATABASE_URL="sqlite:../database/mtg_card_db.db" cargo build
+DATABASE_URL="sqlite:../database/mtg_card_db.db" cargo watch -x run  # hot reload
+cargo test
+cargo clippy
+```
+
+Seed Riftbound cards (re-runnable, upserts from RiftScribe API):
+```bash
+DATABASE_URL="sqlite:../database/mtg_card_db.db" cargo run --bin seed_riftbound
 ```
 
 ### React Frontend (`frontend/`)
+
 ```bash
 npm install
-npm start                    # dev server on :3000
-npm run build                # production build
-npm test                     # run tests
+npm start        # dev server on :3000
+npm run build
+npm test
 ```
+
+---
 
 ## Architecture
 
-**Stack:** Axum (Rust) + React (TypeScript) + SQLite (via SQLx)
+**Stack:** Axum (Rust) + React (TypeScript) + SQLite (via SQLx, runtime queries — no compile-time macros)
 
 ```
 frontend/ (React + TypeScript, port 3000)
-    └── src/api.tsx          ← Axios client, all API calls go through here
-    └── src/pages/           ← CreateDeck, LoadDeck, Home, Test
-    └── src/components/      ← FindCard, visualStack, DeckStats, etc.
-    └── src/context/AuthContext.tsx
+    src/api.tsx                  ← Axios client; MTG + Riftbound types and fetch fns
+    src/App.tsx                  ← Router + max-width layout wrapper
+    src/components/Nav.tsx       ← Game-switcher tabs + per-game sub-nav
+    src/pages/                   ← HomePage (auth), CreateDeckPage, LoadDeckPage, TestPage
+    src/pages/riftbound/         ← CardBrowserPage, DeckBuilderPage
 
 backend-rust/ (Axum, port 8080)
-    └── src/main.rs          ← router, CORS, JWT layer setup
-    └── src/routes/          ← handler modules per resource
-    └── src/models/          ← serde structs (Card, Deck, User)
-    └── src/db/              ← SQLx pool + query functions
+    src/lib.rs                   ← Re-exports db/models/routes (needed by src/bin/)
+    src/main.rs                  ← CORS, TraceLayer, router wiring
+    src/routes/cards.rs          ← MTG /api/cards CRUD
+    src/routes/decks.rs          ← MTG /api/list_decks, upload_deck, save_deck, load_deck
+    src/routes/auth.rs           ← /api/register, /api/login, /api/whoami
+    src/routes/riftbound/        ← /api/rb/cards and /api/rb/decks
+    src/models/{card,deck,user}.rs
+    src/models/riftbound/        ← RbCard, RbDeck structs
+    src/db/{cards,decks,users}.rs
+    src/db/riftbound/            ← rb_cards/rb_decks queries + ensure_tables (auto-runs on startup)
+    src/bin/seed_riftbound.rs    ← Fetches all cards from RiftScribe API per set
 
 database/
-    └── mtg_card_db.db       ← SQLite, tables: cards, decks, users
+    mtg_card_db.db               ← SQLite: cards (34k+ MTG), decks, users, rb_cards (950), rb_decks
 ```
 
-**Key data flow:** Frontend calls JSON REST endpoints. Card data is stored locally in SQLite (imported from Scryfall bulk data). Deck lists are stored as JSON blobs in the `decks` table. Auth uses JWT (Bearer token in Authorization header).
+**Key data flows:**
+- MTG cards: stored in SQLite from Scryfall bulk import. Searched via `LOWER(name) LIKE ?` with semicolon-separated multi-card support.
+- Riftbound cards: seeded from `https://riftscribe.gg/api/cards?set_id=OGN&limit=500` etc. Fetched via `/api/rb/cards?faction=fury&type=Unit`.
+- Decks (both games): stored as JSON text blobs in SQLite (`cards`/`main_deck`/`rune_deck` columns).
+- Auth: JWT (24h expiry), `Authorization: Bearer <token>` header, `bcrypt` for password hashing.
 
-**Card model fields:** name (PK), manacost, cmc, colors, colorIdentity, power, toughness, oracleText, loyalty, typeline, cardType, artist, legalities, image (Scryfall URL).
-
-**Deck model:** id, name, description, format, commander (JSON), cards (JSON array).
+---
 
 ## Conventions
 
-- Frontend base URL is configured in `frontend/src/api.tsx` (`API_BASE_URL`)
-- Deck formats: commander, standard, modern, pioneer, legacy, vintage, pauper, brawl, historic, alchemy
-- Card search supports semicolon-separated names: `/api/cards?name=sol+ring;mana+crypt`
-- DB columns are lowercase (`cardtype`, `oracletext`, `coloridentity`); Rust serialises them as camelCase (`cardType`, `oracleText`, `colorIdentity`) via `#[serde(rename)]` on the `Card` struct — keep this pattern when adding fields
-- `GET /health` returns `"ok"` — used by load balancers / container orchestrators
+- **Frontend base URL:** `frontend/src/api.tsx` — `API_BASE_URL = "http://localhost:8080/api"`
+- **SQLx pattern:** Use runtime `sqlx::query_as::<_, T>(&sql)` — NOT `query_as!` macros. The original SQLite schema has loose types requiring `CAST(cmc AS REAL)` etc. in SELECT queries.
+- **Serde renames:** MTG `Card` struct uses `#[serde(rename)]` to map lowercase DB columns to camelCase JSON (`cardtype` → `cardType`, `oracletext` → `oracleText`). Keep this pattern for new MTG fields.
+- **Riftbound DB columns** are snake_case and map directly (no renaming needed).
+- **New Riftbound route modules** go in `src/routes/riftbound/`, registered in `src/routes/riftbound/mod.rs`, and merged in `src/routes/mod.rs`.
+- **Binaries** in `src/bin/` use `use tcg_backend::...` (not `mod`) — `src/lib.rs` exports the shared modules.
+- **`rb_cards`/`rb_decks` tables** are created automatically via `db::riftbound::ensure_tables` called from `db::create_pool`.
+- **Riftbound card id format:** `{set}-{number}-{champion_id}`, e.g. `ogn-001-298`.
+- **`GET /health`** returns `"ok"` — used by load balancers.
+- **MTG formats:** commander, standard, modern, pioneer, legacy, vintage, pauper, brawl, historic, alchemy.
+- **Riftbound sets:** OGN, OGS, SFD, UNL (VEN empty). Factions: body, calm, chaos, colorless, fury, mind, order.

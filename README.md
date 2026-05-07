@@ -1,6 +1,6 @@
 # TCG Web Application
 
-A Magic: The Gathering deck builder and card browser. Rust/Axum backend, React/TypeScript frontend, SQLite database.
+A multi-game TCG platform. Currently supports **Magic: The Gathering** (deck builder, card browser) and **Riftbound** (card browser, deck storage). Rust/Axum backend, React/TypeScript frontend, SQLite database.
 
 ---
 
@@ -46,6 +46,15 @@ npm start
 # → http://localhost:3000
 ```
 
+### Seed Riftbound cards
+
+Fetches all cards from the RiftScribe API and upserts them into `rb_cards`. Safe to re-run.
+
+```sh
+cd backend-rust
+DATABASE_URL="sqlite:../database/mtg_card_db.db" cargo run --bin seed_riftbound
+```
+
 ### Docker
 
 ```sh
@@ -60,17 +69,28 @@ docker run -p 8080:8080 \
 
 ## Features
 
+### Magic: The Gathering
 - **Card search** — search by name, semicolon-separated for multiple (`sol ring;mana crypt`), hover to preview card image
-- **Deck builder** — build decks in-browser across all major formats
-- **Visual stack** — cards grouped by type (Creature, Instant, Sorcery, Artifact, Enchantment, Planeswalker, Land) with stacked image view
-- **Deck persistence** — save and load decks to/from the database via `.txt` file upload
-- **Commander support** — commander selected separately, displayed with distinct styling
+- **Deck builder** — build decks across all major formats
+- **Visual stack** — cards grouped by type with stacked image view
+- **Deck persistence** — save and load decks via `.txt` file upload
+- **Commander support** — commander selected separately
 - **Deck stats** — land count, permanent count, percentages
 - **Auth** — register/login with JWT
 
-### Supported Formats
-
+#### Supported MTG Formats
 Commander · Standard · Modern · Pioneer · Legacy · Vintage · Pauper · Brawl · Historic · Alchemy
+
+### Riftbound
+- **Card browser** — filter by name, faction, type, rarity, set; hover to preview card image
+- **Deck storage** — save and load decks (champion + main deck + rune deck + battlefields)
+- **950 cards** across sets OGN, OGS, SFD, UNL (seeded from RiftScribe API)
+
+#### Riftbound Card Types
+Unit · Spell · Gear · Rune · Legend · Battlefield
+
+#### Riftbound Factions
+Body · Calm · Chaos · Colorless · Fury · Mind · Order
 
 ---
 
@@ -78,7 +98,7 @@ Commander · Standard · Modern · Pioneer · Legacy · Vintage · Pauper · Bra
 
 Base URL: `http://localhost:8080/api`
 
-### Cards
+### MTG Cards
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -89,7 +109,7 @@ Base URL: `http://localhost:8080/api`
 | PUT | `/cards/{name}` | Update card |
 | DELETE | `/cards/{name}` | Delete card |
 
-### Decks
+### MTG Decks
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -97,6 +117,25 @@ Base URL: `http://localhost:8080/api`
 | GET | `/load_deck?deck_name={name}` | Load a deck by name |
 | POST | `/upload_deck` | Parse a deck file (multipart) |
 | POST | `/save_deck` | Parse and save a deck file (multipart) |
+
+### Riftbound Cards
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/rb/cards` | List/search cards (`?name=`, `?faction=`, `?type=`, `?rarity=`, `?set=`) |
+| GET | `/rb/cards/{id}` | Get card by id (e.g. `ogn-001-298`) |
+| POST | `/rb/cards` | Create/upsert card |
+| PUT | `/rb/cards/{id}` | Update card |
+| DELETE | `/rb/cards/{id}` | Delete card |
+
+### Riftbound Decks
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/rb/decks` | List all decks |
+| GET | `/rb/decks/{name}` | Get deck by name |
+| POST | `/rb/decks` | Save deck (JSON body) |
+| DELETE | `/rb/decks/{name}` | Delete deck |
 
 ### Auth
 
@@ -110,7 +149,7 @@ Base URL: `http://localhost:8080/api`
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/health` | Returns `ok` — for load balancer / container health checks |
+| GET | `/health` | Returns `ok` |
 
 ---
 
@@ -120,29 +159,64 @@ Base URL: `http://localhost:8080/api`
 tcg-website/
 ├── backend-rust/
 │   ├── src/
+│   │   ├── lib.rs           # Re-exports db/models/routes for shared use
 │   │   ├── main.rs          # Server setup, CORS, router
-│   │   ├── routes/          # cards.rs, decks.rs, auth.rs
-│   │   ├── models/          # Card, Deck, User structs
-│   │   └── db/              # SQLx query functions
+│   │   ├── bin/
+│   │   │   └── seed_riftbound.rs  # One-shot Riftbound card importer
+│   │   ├── routes/
+│   │   │   ├── cards.rs     # MTG card CRUD
+│   │   │   ├── decks.rs     # MTG deck upload/save/load
+│   │   │   ├── auth.rs      # Register/login/whoami
+│   │   │   └── riftbound/   # /api/rb/cards and /api/rb/decks
+│   │   ├── models/
+│   │   │   ├── card.rs      # MTG Card struct
+│   │   │   ├── deck.rs      # MTG Deck struct
+│   │   │   ├── user.rs
+│   │   │   └── riftbound/   # RbCard, RbDeck structs
+│   │   └── db/
+│   │       ├── cards.rs     # MTG SQLx queries
+│   │       ├── decks.rs
+│   │       ├── users.rs
+│   │       └── riftbound/   # rb_cards/rb_decks queries + auto-migration
 │   ├── Cargo.toml
 │   └── Dockerfile
 │
 ├── frontend/
 │   └── src/
-│       ├── api.tsx           # Axios client + Card/Deck types
-│       ├── App.tsx           # Router
-│       ├── pages/            # HomePage, CreateDeckPage, LoadDeckPage, TestPage
-│       └── components/       # FindCard, FoundCardsComponent, visualStack, DeckStats, ...
+│       ├── api.tsx           # Axios client — MTG + Riftbound types and calls
+│       ├── App.tsx           # Router + layout wrapper
+│       ├── components/
+│       │   ├── Nav.tsx       # Game switcher + per-game sub-nav
+│       │   └── ...           # FindCard, FoundCardsComponent, visualStack, DeckStats
+│       └── pages/
+│           ├── HomePage.tsx       # Auth (login/register)
+│           ├── CreateDeckPage.tsx # MTG deck builder
+│           ├── LoadDeckPage.tsx   # MTG deck loader
+│           └── riftbound/
+│               ├── CardBrowserPage.tsx  # Riftbound card search + preview
+│               └── DeckBuilderPage.tsx  # (in progress)
 │
-├── database/
-│   └── mtg_card_db.db        # SQLite — cards (34k+), decks, users
-│
-└── Diagrams/                 # Architecture and UI diagrams
+└── database/
+    └── mtg_card_db.db   # SQLite — cards (34k+ MTG), decks, users, rb_cards (950), rb_decks
 ```
 
 ---
 
-## Deck File Format
+## Riftbound Deck Format (POST /api/rb/decks)
+
+```json
+{
+  "name": "My Deck",
+  "format": "standard",
+  "champion": "ogn-001-298",
+  "main_deck": [{ "id": "ogn-001-298", "count": 3 }],
+  "rune_deck": [{ "id": "ogn-xxx-yyy", "count": 1 }],
+  "battlefields": [],
+  "description": "Optional description"
+}
+```
+
+## MTG Deck File Format
 
 Upload `.txt` files with one card per line:
 
@@ -162,14 +236,13 @@ Upload `.txt` files with one card per line:
 
 **Frontend won't connect**
 - Confirm backend is running on port 8080
-- API base URL is set in `frontend/src/api.tsx`
+- API base URL is in `frontend/src/api.tsx`
 
-**Cards not loading**
-- Verify the database file exists at `database/mtg_card_db.db`
-- Check browser console for API errors
+**Riftbound cards missing**
+- Run `cargo run --bin seed_riftbound` to import from RiftScribe
 
 ---
 
 ## License
 
-Magic: The Gathering is a trademark of Wizards of the Coast.
+Magic: The Gathering is a trademark of Wizards of the Coast. Riftbound is a trademark of Riot Games.
