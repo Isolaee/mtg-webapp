@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod cards;
+pub mod collection;
 pub mod decks;
 pub mod riftbound;
 
@@ -24,5 +25,6 @@ pub fn router(pool: SqlitePool) -> Router {
         .merge(cards::router(pool.clone()))
         .merge(decks::router(pool.clone()))
         .merge(auth::router(pool.clone()))
-        .merge(riftbound::router(pool))
+        .merge(riftbound::router(pool.clone()))
+        .merge(collection::router(pool))
 }
