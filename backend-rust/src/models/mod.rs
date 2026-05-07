@@ -1,5 +1,6 @@
 pub mod card;
 pub mod deck;
+pub mod riftbound;
 pub mod user;
 
 pub use card::Card;

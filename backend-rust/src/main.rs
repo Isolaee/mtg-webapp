@@ -1,6 +1,4 @@
-mod db;
-mod models;
-mod routes;
+use tcg_backend::{db, routes};
 
 use axum::Router;
 use dotenvy::dotenv;
