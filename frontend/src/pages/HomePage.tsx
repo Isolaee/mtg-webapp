@@ -13,9 +13,10 @@ function HomePage() {
       <div style={{ display: "flex", gap: "1.5em", flexWrap: "wrap" }}>
         <GameCard
           title="Magic: The Gathering"
-          description="Search 34,000+ cards, visualize your deck, upload existing lists, and save decks to your account."
+          description="Browse 34,000+ cards, build decks, upload existing lists, and save to your account."
           color={T.blue}
           links={[
+            { to: "/cards", label: "Browse Cards" },
             { to: "/deck-builder", label: "Deck Builder" },
           ]}
         />

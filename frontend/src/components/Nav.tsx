@@ -5,6 +5,7 @@ import { T } from "../theme";
 
 const MTG_LINKS = [
   { to: "/", label: "Home" },
+  { to: "/cards", label: "Cards" },
   { to: "/deck-builder", label: "Deck Builder" },
   { to: "/my-decks", label: "My Decks" },
 ];

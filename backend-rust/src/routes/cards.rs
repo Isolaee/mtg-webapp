@@ -20,12 +20,36 @@ pub fn router(pool: SqlitePool) -> Router {
 #[derive(Deserialize)]
 struct CardQuery {
     name: Option<String>,
+    #[serde(rename = "type")]
+    card_type: Option<String>,
+    color: Option<String>,
 }
 
 async fn list_cards(
     State(pool): State<SqlitePool>,
     Query(params): Query<CardQuery>,
 ) -> impl IntoResponse {
+    let has_filters = params.card_type.is_some() || params.color.is_some();
+
+    // When type or color filters are present, use the filter query
+    if has_filters || params.name.as_deref().map(|n| !n.contains(';')).unwrap_or(false) && params.name.is_some() {
+        if !has_filters && params.name.as_deref().unwrap_or("").trim().is_empty() {
+            return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Name parameter is empty"}))).into_response();
+        }
+        return match db::cards::find_with_filters(
+            &pool,
+            params.name.as_deref(),
+            params.card_type.as_deref(),
+            params.color.as_deref(),
+        )
+        .await
+        {
+            Ok(cards) => Json(cards).into_response(),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+        };
+    }
+
+    // Semicolon-separated multi-card lookup (used by deck builder)
     match &params.name {
         Some(name) if name.trim().is_empty() => {
             (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Name parameter is empty"}))).into_response()

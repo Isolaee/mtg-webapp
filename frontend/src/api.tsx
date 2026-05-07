@@ -15,16 +15,28 @@ export interface Card {
   name: string;
   manacost?: string;
   cmc?: number;
-  typeline?: string;
-  artist?: string;
+  colors?: string;
+  colorIdentity?: string;
   power?: string;
   toughness?: string;
   oracleText?: string;
+  loyalty?: string;
+  supertype?: string;
+  cardType?: string;
+  typeline?: string;
+  artist?: string;
+  legalities?: string;
   image?: string;
 }
 
+export interface CardFilters {
+  name?: string;
+  type?: string;
+  color?: string;
+}
+
 export const fetchCards = async (
-  filters?: Record<string, string>,
+  filters?: CardFilters | Record<string, string>,
 ): Promise<Card[]> => {
   const response = await axios.get<Card[]>(`${API_BASE_URL}/cards`, {
     params: filters,

@@ -8,6 +8,7 @@ import { AuthProvider } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import MtgDeckBuilderPage from "./pages/mtg/DeckBuilderPage";
+import MtgCardBrowserPage from "./pages/mtg/CardBrowserPage";
 import TestPage from "./pages/TestPage";
 import CardBrowserPage from "./pages/riftbound/CardBrowserPage";
 import RbDeckBuilderPage from "./pages/riftbound/DeckBuilderPage";
@@ -25,6 +26,7 @@ const App: React.FC = () => (
             <Route path="/login" element={<LoginPage />} />
             {/* MTG */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/cards" element={<MtgCardBrowserPage />} />
             <Route path="/deck-builder" element={<MtgDeckBuilderPage />} />
             <Route path="/test" element={<TestPage />} />
             <Route
