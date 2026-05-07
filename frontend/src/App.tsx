@@ -14,6 +14,8 @@ import CardBrowserPage from "./pages/riftbound/CardBrowserPage";
 import RbDeckBuilderPage from "./pages/riftbound/DeckBuilderPage";
 import MyDecksPage from "./pages/MyDecksPage";
 import ProfilePage from "./pages/ProfilePage";
+import CollectionPage from "./pages/CollectionPage";
+import CollectionScanPage from "./pages/CollectionScanPage";
 
 const App: React.FC = () => (
   <AuthProvider>
@@ -42,6 +44,23 @@ const App: React.FC = () => (
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            {/* Collection */}
+            <Route
+              path="/collection"
+              element={
+                <ProtectedRoute>
+                  <CollectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/collection/scan"
+              element={
+                <ProtectedRoute>
+                  <CollectionScanPage />
                 </ProtectedRoute>
               }
             />

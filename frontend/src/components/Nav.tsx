@@ -7,12 +7,14 @@ const MTG_LINKS = [
   { to: "/cards", label: "Cards" },
   { to: "/deck-builder", label: "Deck Builder" },
   { to: "/my-decks", label: "My Decks" },
+  { to: "/collection", label: "Collection" },
 ];
 
 const RB_LINKS = [
   { to: "/riftbound", label: "Cards" },
   { to: "/riftbound/deck-builder", label: "Deck Builder" },
   { to: "/my-decks", label: "My Decks" },
+  { to: "/collection", label: "Collection" },
 ];
 
 const Nav: React.FC = () => {
