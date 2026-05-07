@@ -8,13 +8,13 @@ import {
   deleteMtgDeck,
   deleteRbDeck,
 } from "../api";
+import { T } from "../theme";
 
 type Tab = "mtg" | "riftbound";
 
 const MyDecksPage: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("mtg");
-
   const [mtgDecks, setMtgDecks] = useState<MtgDeckSummary[]>([]);
   const [rbDecks, setRbDecks] = useState<RbDeckSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,136 +49,127 @@ const MyDecksPage: React.FC = () => {
     setRbDecks((prev) => prev.filter((d) => d.name !== name));
   };
 
+  const tabColor = tab === "mtg" ? T.blue : T.purple;
+
   return (
     <div>
-      <h1 style={{ marginBottom: "0.5em" }}>My Decks</h1>
+      <h1 style={{ marginBottom: "1.2em" }}>My Decks</h1>
 
-      {/* Tab row */}
-      <div style={{ display: "flex", gap: 0, marginBottom: "1.5em", borderBottom: "2px solid #ddd" }}>
-        {(["mtg", "riftbound"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              padding: "0.5em 1.4em",
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              fontWeight: tab === t ? 700 : 400,
-              fontSize: "0.95em",
-              color: tab === t ? (t === "mtg" ? "#1a5276" : "#6d2a8c") : "#888",
-              borderBottom: tab === t
-                ? `3px solid ${t === "mtg" ? "#1a5276" : "#6d2a8c"}`
-                : "3px solid transparent",
-              marginBottom: -2,
-            }}
-          >
-            {t === "mtg" ? "Magic: The Gathering" : "Riftbound"}
-          </button>
-        ))}
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: "1.8em" }}>
+        {(["mtg", "riftbound"] as Tab[]).map((t) => {
+          const c = t === "mtg" ? T.blue : T.purple;
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                padding: "0.55em 1.4em",
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+                fontWeight: tab === t ? 700 : 400,
+                fontSize: "0.85em",
+                fontFamily: "Cinzel, serif",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                color: tab === t ? c : T.textDim,
+                borderBottom: tab === t ? `2px solid ${c}` : "2px solid transparent",
+                marginBottom: -1,
+              }}
+            >
+              {t === "mtg" ? "Magic: The Gathering" : "Riftbound"}
+            </button>
+          );
+        })}
       </div>
 
-      {loading && <p style={{ color: "#888" }}>Loading…</p>}
-      {error && <p style={{ color: "#c0392b" }}>{error}</p>}
+      {loading && <p style={{ color: T.textDim }}>Loading…</p>}
+      {error && <p style={{ color: "#E74C3C" }}>{error}</p>}
 
       {!loading && !error && tab === "mtg" && (
         <DeckGrid
-          decks={mtgDecks.map((d) => ({
-            name: d.deck_name,
-            description: d.deck_description,
-            format: d.format,
-          }))}
-          color="#1a5276"
-          emptyMsg="No MTG decks saved yet."
-          builderPath="/create-deck"
-          onDelete={(name) => handleDeleteMtg(name)}
-          onLoad={() => navigate("/create-deck")}
+          decks={mtgDecks.map((d) => ({ name: d.deck_name, description: d.deck_description, format: d.format }))}
+          color={T.blue}
+          emptyMsg="No MTG decks saved yet. Head to the deck builder to get started."
+          onDelete={handleDeleteMtg}
+          onOpen={() => navigate("/create-deck")}
         />
       )}
 
       {!loading && !error && tab === "riftbound" && (
         <DeckGrid
-          decks={rbDecks.map((d) => ({
-            name: d.name,
-            description: d.description,
-            format: d.format,
-          }))}
-          color="#6d2a8c"
-          emptyMsg="No Riftbound decks saved yet."
-          builderPath="/riftbound/deck-builder"
-          onDelete={(name) => handleDeleteRb(name)}
-          onLoad={() => navigate("/riftbound/deck-builder")}
+          decks={rbDecks.map((d) => ({ name: d.name, description: d.description, format: d.format }))}
+          color={T.purple}
+          emptyMsg="No Riftbound decks saved yet. Head to the deck builder to get started."
+          onDelete={handleDeleteRb}
+          onOpen={() => navigate("/riftbound/deck-builder")}
         />
+      )}
+
+      {/* Hint text */}
+      {!loading && !error && (
+        <p style={{ color: T.textDim, fontSize: 13, marginTop: "2em" }}>
+          To load a specific deck into the builder, open the builder and use the Load Deck panel.
+        </p>
       )}
     </div>
   );
 };
 
-interface DeckRow {
-  name: string;
-  description?: string;
-  format: string;
-}
+interface DeckRow { name: string; description?: string; format: string; }
 
-interface DeckGridProps {
+const DeckGrid: React.FC<{
   decks: DeckRow[];
   color: string;
   emptyMsg: string;
-  builderPath: string;
   onDelete: (name: string) => void;
-  onLoad: (name: string) => void;
-}
-
-const DeckGrid: React.FC<DeckGridProps> = ({ decks, color, emptyMsg, onDelete, onLoad }) => {
+  onOpen: () => void;
+}> = ({ decks, color, emptyMsg, onDelete, onOpen }) => {
   if (decks.length === 0) {
-    return <p style={{ color: "#aaa" }}>{emptyMsg}</p>;
+    return <p style={{ color: T.textDim, fontStyle: "italic" }}>{emptyMsg}</p>;
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-        gap: "1em",
-      }}
-    >
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1em" }}>
       {decks.map((deck) => (
         <div
           key={deck.name}
           style={{
+            background: T.surface,
             border: `1px solid ${color}33`,
-            borderRadius: 8,
-            padding: "1em 1.1em",
-            background: "#fafafa",
+            borderLeft: `3px solid ${color}`,
+            borderRadius: 6,
+            padding: "1em 1.2em",
             display: "flex",
             flexDirection: "column",
-            gap: "0.4em",
+            gap: "0.35em",
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: "1em", color: "#222" }}>
+          <div style={{ fontWeight: 700, color: T.textBright, fontFamily: "Cinzel, serif", fontSize: "0.95em" }}>
             {deck.name}
           </div>
-          <div style={{ fontSize: 12, color: "#888", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <div style={{ fontSize: 11, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             {deck.format}
           </div>
           {deck.description && (
-            <div style={{ fontSize: 13, color: "#555", marginTop: "0.2em" }}>
-              {deck.description}
-            </div>
+            <div style={{ fontSize: 13, color: T.text, marginTop: "0.2em" }}>{deck.description}</div>
           )}
           <div style={{ display: "flex", gap: "0.5em", marginTop: "0.6em" }}>
             <button
-              onClick={() => onLoad(deck.name)}
+              onClick={onOpen}
               style={{
                 flex: 1,
                 padding: "0.35em 0",
-                background: color,
-                color: "#fff",
-                border: "none",
-                borderRadius: 5,
+                background: `${color}22`,
+                color,
+                border: `1px solid ${color}55`,
+                borderRadius: 4,
                 cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 600,
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
               }}
             >
               Open Builder
@@ -187,12 +178,12 @@ const DeckGrid: React.FC<DeckGridProps> = ({ decks, color, emptyMsg, onDelete, o
               onClick={() => onDelete(deck.name)}
               style={{
                 padding: "0.35em 0.8em",
-                background: "#fff",
-                color: "#c0392b",
-                border: "1px solid #c0392b",
-                borderRadius: 5,
+                background: "transparent",
+                color: "#E74C3C",
+                border: "1px solid #E74C3C55",
+                borderRadius: 4,
                 cursor: "pointer",
-                fontSize: 13,
+                fontSize: 12,
               }}
             >
               Delete

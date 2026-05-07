@@ -18,7 +18,7 @@ import ProfilePage from "./pages/ProfilePage";
 const App: React.FC = () => (
   <AuthProvider>
     <Router>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 1em" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5em" }}>
         <Nav />
         <ErrorBoundary>
           <Routes>

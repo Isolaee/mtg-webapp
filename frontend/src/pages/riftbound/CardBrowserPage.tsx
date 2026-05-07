@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { fetchRbCards, RbCard } from "../../api";
+import { T } from "../../theme";
 
 const FACTIONS = ["", "body", "calm", "chaos", "colorless", "fury", "mind", "order"];
 const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
@@ -38,21 +39,16 @@ const CardBrowserPage: React.FC = () => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") search();
-  };
+  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") search(); };
 
   const keywords = (card: RbCard): string[] => {
-    try {
-      return card.keywords ? JSON.parse(card.keywords) : [];
-    } catch {
-      return [];
-    }
+    try { return card.keywords ? JSON.parse(card.keywords) : []; }
+    catch { return []; }
   };
 
   return (
     <div>
-      <h1 style={{ marginBottom: "0.75em" }}>Riftbound Cards</h1>
+      <h1 style={{ marginBottom: "1em", color: T.purple }}>Riftbound Cards</h1>
 
       {/* Filter bar */}
       <div
@@ -60,17 +56,21 @@ const CardBrowserPage: React.FC = () => {
           display: "flex",
           flexWrap: "wrap",
           gap: "0.5em",
-          marginBottom: "1em",
           alignItems: "center",
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 6,
+          padding: "0.8em 1em",
+          marginBottom: "1.2em",
         }}
       >
         <input
           type="text"
-          placeholder="Search by name"
+          placeholder="Search by name…"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={handleKeyDown}
-          style={{ padding: "0.4em 0.6em", border: "1px solid #ccc", borderRadius: 4, minWidth: 180 }}
+          style={{ minWidth: 180, width: "auto" }}
         />
         <FilterSelect label="Faction" value={faction} onChange={setFaction} options={FACTIONS} />
         <FilterSelect label="Type" value={cardType} onChange={setCardType} options={TYPES} />
@@ -80,44 +80,54 @@ const CardBrowserPage: React.FC = () => {
           onClick={search}
           disabled={loading}
           style={{
-            padding: "0.4em 1.2em",
-            background: "#6d2a8c",
-            color: "#fff",
-            border: "none",
+            padding: "0.5em 1.4em",
+            background: loading ? `${T.purple}44` : `${T.purple}CC`,
+            color: T.goldLight,
+            border: `1px solid ${T.purple}`,
             borderRadius: 4,
             cursor: loading ? "default" : "pointer",
-            fontWeight: 600,
+            fontWeight: 700,
+            fontSize: "0.85em",
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
           }}
         >
           {loading ? "Searching…" : "Search"}
         </button>
       </div>
 
-      {error && <div style={{ color: "red", marginBottom: "0.75em" }}>{error}</div>}
+      {error && <div style={{ color: "#E74C3C", marginBottom: "0.75em" }}>{error}</div>}
 
-      {/* Results */}
       {cards.length > 0 && (
-        <div style={{ marginBottom: "0.5em", color: "#555", fontSize: "0.9em" }}>
+        <div style={{ color: T.textDim, fontSize: "0.85em", marginBottom: "0.75em" }}>
           {cards.length} card{cards.length !== 1 ? "s" : ""} found
         </div>
       )}
 
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {cards.map((card) => (
-          <li
+      {/* Results list */}
+      <div
+        style={{
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 6,
+          overflow: "hidden",
+        }}
+      >
+        {cards.map((card, i) => (
+          <div
             key={card.id}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "0.75em",
-              padding: "0.4em 0",
-              borderBottom: "1px solid #eee",
+              padding: "0.55em 1em",
+              borderBottom: i < cards.length - 1 ? `1px solid ${T.border}` : "none",
               position: "relative",
             }}
           >
             {/* Hover preview */}
             <span
-              style={{ fontWeight: 500, cursor: "default", position: "relative" }}
+              style={{ fontWeight: 600, color: T.textBright, cursor: "default", position: "relative", minWidth: 160 }}
               onMouseEnter={() => setHovered(card.id)}
               onMouseLeave={() => setHovered(null)}
             >
@@ -130,12 +140,12 @@ const CardBrowserPage: React.FC = () => {
                     position: "absolute",
                     left: "110%",
                     top: 0,
-                    width: 200,
+                    width: 220,
                     height: "auto",
-                    border: "1px solid #333",
-                    background: "#fff",
-                    zIndex: 10,
-                    boxShadow: "0 2px 8px #0005",
+                    border: `1px solid ${T.borderGold}`,
+                    background: T.surface,
+                    zIndex: 100,
+                    boxShadow: "0 4px 20px #00000099",
                     borderRadius: 6,
                   }}
                 />
@@ -143,67 +153,54 @@ const CardBrowserPage: React.FC = () => {
             </span>
 
             <CardBadge text={card.faction} color={factionColor(card.faction)} />
-            <CardBadge text={card.card_type} color="#555" />
+            <CardBadge text={card.card_type} color={T.textDim} />
             <CardBadge text={card.rarity} color={rarityColor(card.rarity)} />
-            <span style={{ color: "#888", fontSize: "0.82em" }}>{card.set_id}</span>
+            <span style={{ color: T.textDim, fontSize: "0.8em" }}>{card.set_id}</span>
 
-            {/* Stats */}
             {(card.energy != null || card.might != null) && (
-              <span style={{ fontSize: "0.82em", color: "#444" }}>
+              <span style={{ fontSize: "0.8em", color: T.text }}>
                 {card.energy != null && `E:${card.energy}`}
                 {card.energy != null && card.might != null && " / "}
                 {card.might != null && `M:${card.might}`}
               </span>
             )}
 
-            {/* Keywords */}
-            {keywords(card).map((kw) => (
+            {keywords(card).slice(0, 3).map((kw) => (
               <span
                 key={kw}
                 style={{
-                  fontSize: "0.75em",
-                  padding: "0.1em 0.4em",
+                  fontSize: "0.72em",
+                  padding: "0.1em 0.5em",
                   borderRadius: 3,
-                  background: "#e8e8e8",
-                  color: "#333",
+                  background: `${T.purple}33`,
+                  color: T.purple,
+                  border: `1px solid ${T.purple}44`,
+                  whiteSpace: "nowrap",
                 }}
               >
                 {kw}
               </span>
             ))}
-          </li>
+          </div>
         ))}
+
         {cards.length === 0 && !loading && (
-          <li style={{ color: "#888", fontStyle: "italic" }}>
+          <div style={{ padding: "2em", color: T.textDim, fontStyle: "italic", textAlign: "center" }}>
             Use the filters above to search for cards.
-          </li>
+          </div>
         )}
-      </ul>
+      </div>
     </div>
   );
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-interface FilterSelectProps {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-}
+interface FilterSelectProps { label: string; value: string; onChange: (v: string) => void; options: string[]; }
 
 const FilterSelect: React.FC<FilterSelectProps> = ({ label, value, onChange, options }) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    style={{ padding: "0.4em 0.5em", border: "1px solid #ccc", borderRadius: 4 }}
-    aria-label={label}
-  >
+  <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} style={{ width: "auto" }}>
     <option value="">All {label}s</option>
     {options.filter(Boolean).map((o) => (
-      <option key={o} value={o}>
-        {o.charAt(0).toUpperCase() + o.slice(1)}
-      </option>
+      <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>
     ))}
   </select>
 );
@@ -211,11 +208,12 @@ const FilterSelect: React.FC<FilterSelectProps> = ({ label, value, onChange, opt
 const CardBadge: React.FC<{ text: string; color: string }> = ({ text, color }) => (
   <span
     style={{
-      fontSize: "0.78em",
-      padding: "0.1em 0.5em",
+      fontSize: "0.73em",
+      padding: "0.15em 0.55em",
       borderRadius: 3,
-      background: color,
-      color: "#fff",
+      background: `${color}33`,
+      color,
+      border: `1px solid ${color}55`,
       fontWeight: 600,
       whiteSpace: "nowrap",
     }}
@@ -226,26 +224,18 @@ const CardBadge: React.FC<{ text: string; color: string }> = ({ text, color }) =
 
 function factionColor(faction: string): string {
   const map: Record<string, string> = {
-    fury: "#c0392b",
-    mind: "#2980b9",
-    body: "#27ae60",
-    calm: "#16a085",
-    chaos: "#8e44ad",
-    order: "#d4ac0d",
-    colorless: "#7f8c8d",
+    fury: "#E74C3C", mind: "#3498DB", body: "#2ECC71",
+    calm: "#1ABC9C", chaos: "#9B59B6", order: "#F1C40F", colorless: "#95A5A6",
   };
-  return map[faction] ?? "#555";
+  return map[faction] ?? T.textDim;
 }
 
 function rarityColor(rarity: string): string {
   const map: Record<string, string> = {
-    common: "#7f8c8d",
-    uncommon: "#2ecc71",
-    rare: "#2980b9",
-    epic: "#9b59b6",
-    showcase: "#e67e22",
+    common: "#7F8C8D", uncommon: "#2ECC71", rare: "#3498DB",
+    epic: "#9B59B6", showcase: "#E67E22",
   };
-  return map[rarity] ?? "#555";
+  return map[rarity] ?? T.textDim;
 }
 
 export default CardBrowserPage;

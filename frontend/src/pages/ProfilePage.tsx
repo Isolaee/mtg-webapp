@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchProfile, changePassword, UserProfile } from "../api";
+import { T, panel } from "../theme";
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,172 +26,111 @@ const ProfilePage: React.FC = () => {
     setPwError(null);
     setPwSuccess(false);
 
-    if (newPw !== confirmPw) {
-      setPwError("New passwords do not match.");
-      return;
-    }
-    if (newPw.length < 8) {
-      setPwError("New password must be at least 8 characters.");
-      return;
-    }
+    if (newPw !== confirmPw) { setPwError("New passwords do not match."); return; }
+    if (newPw.length < 8) { setPwError("New password must be at least 8 characters."); return; }
 
     setPwLoading(true);
     try {
       await changePassword(oldPw, newPw);
       setPwSuccess(true);
-      setOldPw("");
-      setNewPw("");
-      setConfirmPw("");
+      setOldPw(""); setNewPw(""); setConfirmPw("");
     } catch (err: any) {
-      const msg = err?.response?.data?.msg ?? "Failed to change password.";
-      setPwError(msg);
+      setPwError(err?.response?.data?.msg ?? "Failed to change password.");
     } finally {
       setPwLoading(false);
     }
   };
 
-  if (loadError) {
-    return <p style={{ color: "#c0392b" }}>{loadError}</p>;
-  }
-
-  if (!profile) {
-    return <p style={{ color: "#888" }}>Loading…</p>;
-  }
+  if (loadError) return <p style={{ color: "#E74C3C" }}>{loadError}</p>;
+  if (!profile) return <p style={{ color: T.textDim }}>Loading…</p>;
 
   const joinedDate = profile.created_at
     ? new Date(profile.created_at).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+        year: "numeric", month: "long", day: "numeric",
       })
     : null;
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <h1 style={{ marginBottom: "0.25em" }}>Profile</h1>
+      <h1 style={{ marginBottom: "1.5em" }}>Profile</h1>
 
-      {/* Account info card */}
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: "1.4em 1.6em",
-          marginBottom: "2em",
-          background: "#fafafa",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75em", marginBottom: "1em" }}>
+      {/* Account card */}
+      <div style={{ ...panel, marginBottom: "1.5em" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1em", marginBottom: "1.4em" }}>
           <div
             style={{
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               borderRadius: "50%",
-              background: "#1a5276",
-              color: "#fff",
+              background: `linear-gradient(135deg, ${T.blue}44, ${T.purple}44)`,
+              border: `2px solid ${T.gold}88`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: 22,
               fontWeight: 700,
+              color: T.goldLight,
+              fontFamily: "Cinzel, serif",
+              flexShrink: 0,
             }}
           >
             {profile.username[0].toUpperCase()}
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: "1.15em" }}>{profile.username}</div>
+            <div style={{ fontWeight: 700, fontSize: "1.15em", color: T.textBright, fontFamily: "Cinzel, serif" }}>
+              {profile.username}
+            </div>
             {joinedDate && (
-              <div style={{ fontSize: 13, color: "#888" }}>Member since {joinedDate}</div>
+              <div style={{ fontSize: 13, color: T.textDim, marginTop: 2 }}>
+                Member since {joinedDate}
+              </div>
             )}
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "1.5em" }}>
-          <StatPill
-            label="MTG Decks"
-            value={profile.mtg_deck_count}
-            color="#1a5276"
-            onClick={() => navigate("/my-decks")}
-          />
-          <StatPill
-            label="Riftbound Decks"
-            value={profile.rb_deck_count}
-            color="#6d2a8c"
-            onClick={() => navigate("/my-decks")}
-          />
+        <div style={{ display: "flex", gap: "1em" }}>
+          <StatPill label="MTG Decks" value={profile.mtg_deck_count} color={T.blue} onClick={() => navigate("/my-decks")} />
+          <StatPill label="Riftbound Decks" value={profile.rb_deck_count} color={T.purple} onClick={() => navigate("/my-decks")} />
         </div>
       </div>
 
       {/* Change password */}
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 10,
-          padding: "1.4em 1.6em",
-          background: "#fafafa",
-        }}
-      >
-        <h2 style={{ marginTop: 0, marginBottom: "1em", fontSize: "1.05em" }}>
+      <div style={panel}>
+        <h2 style={{ marginBottom: "1.2em", fontSize: "1em", color: T.gold, letterSpacing: "0.06em" }}>
           Change Password
         </h2>
         <form onSubmit={handleChangePassword}>
           <Field label="Current password">
-            <input
-              type="password"
-              value={oldPw}
-              onChange={(e) => setOldPw(e.target.value)}
-              required
-              autoComplete="current-password"
-              style={inputStyle}
-            />
+            <input type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} required autoComplete="current-password" />
           </Field>
           <Field label="New password">
-            <input
-              type="password"
-              value={newPw}
-              onChange={(e) => setNewPw(e.target.value)}
-              required
-              autoComplete="new-password"
-              style={inputStyle}
-            />
+            <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} required autoComplete="new-password" />
           </Field>
           <Field label="Confirm new password">
-            <input
-              type="password"
-              value={confirmPw}
-              onChange={(e) => setConfirmPw(e.target.value)}
-              required
-              autoComplete="new-password"
-              style={inputStyle}
-            />
+            <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required autoComplete="new-password" />
           </Field>
 
-          {pwError && (
-            <div style={{ color: "#c0392b", fontSize: 13, marginBottom: "0.75em" }}>
-              {pwError}
-            </div>
-          )}
-          {pwSuccess && (
-            <div style={{ color: "#27ae60", fontSize: 13, marginBottom: "0.75em" }}>
-              Password updated successfully.
-            </div>
-          )}
+          {pwError && <div style={{ color: "#E74C3C", fontSize: 13, marginBottom: "0.75em" }}>{pwError}</div>}
+          {pwSuccess && <div style={{ color: T.green, fontSize: 13, marginBottom: "0.75em" }}>Password updated successfully.</div>}
 
           <button
             type="submit"
             disabled={pwLoading || !oldPw || !newPw || !confirmPw}
             style={{
-              padding: "0.5em 1.4em",
-              background: "#1a5276",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
+              padding: "0.5em 1.6em",
+              background: !oldPw || !newPw || !confirmPw ? `${T.gold}33` : `linear-gradient(to bottom, ${T.gold}CC, ${T.gold}99)`,
+              color: T.bg,
+              border: `1px solid ${T.gold}88`,
+              borderRadius: 4,
               fontWeight: 700,
-              fontSize: "0.95em",
+              fontSize: "0.85em",
+              fontFamily: "Cinzel, serif",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
               cursor: pwLoading ? "default" : "pointer",
-              opacity: !oldPw || !newPw || !confirmPw ? 0.6 : 1,
             }}
           >
-            {pwLoading ? "Saving…" : "Update password"}
+            {pwLoading ? "Saving…" : "Update Password"}
           </button>
         </form>
       </div>
@@ -198,51 +138,31 @@ const ProfilePage: React.FC = () => {
   );
 };
 
-const StatPill: React.FC<{
-  label: string;
-  value: number;
-  color: string;
-  onClick: () => void;
-}> = ({ label, value, color, onClick }) => (
+const StatPill: React.FC<{ label: string; value: number; color: string; onClick: () => void }> = ({ label, value, color, onClick }) => (
   <button
     onClick={onClick}
     style={{
-      background: "none",
+      background: `${color}11`,
       border: `1px solid ${color}44`,
-      borderRadius: 8,
-      padding: "0.5em 1em",
+      borderRadius: 6,
+      padding: "0.6em 1.2em",
       cursor: "pointer",
       textAlign: "center",
-      minWidth: 110,
+      minWidth: 120,
     }}
   >
-    <div style={{ fontSize: "1.5em", fontWeight: 700, color }}>{value}</div>
-    <div style={{ fontSize: 12, color: "#666" }}>{label}</div>
+    <div style={{ fontSize: "1.6em", fontWeight: 700, color, fontFamily: "Cinzel, serif" }}>{value}</div>
+    <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{label}</div>
   </button>
 );
 
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({
-  label,
-  children,
-}) => (
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div style={{ marginBottom: "1em" }}>
-    <label
-      style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#444", marginBottom: "0.3em" }}
-    >
+    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.textDim, marginBottom: "0.35em", textTransform: "uppercase", letterSpacing: "0.06em" }}>
       {label}
     </label>
     {children}
   </div>
 );
-
-const inputStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  padding: "0.5em 0.7em",
-  border: "1px solid #ccc",
-  borderRadius: 6,
-  fontSize: "1em",
-  boxSizing: "border-box",
-};
 
 export default ProfilePage;
