@@ -96,6 +96,8 @@ npx cap run android
 
 Re-run `npm run build && npx cap sync android` after every React change.
 
+**Installed Capacitor plugins:** `@capacitor/core`, `@capacitor/android`, `@capacitor/camera` (installed; camera permission declared in `AndroidManifest.xml`). The collection scan page uses `getUserMedia` directly rather than the camera plugin.
+
 ---
 
 ## Architecture
@@ -104,33 +106,42 @@ Re-run `npm run build && npx cap sync android` after every React change.
 
 ```
 frontend/ (React + TypeScript, port 3000)
-    src/api.tsx                  ← Axios client; MTG + Riftbound types and fetch fns
+    src/api.tsx                  ← Axios client; MTG + Riftbound + Collection types and fetch fns
     src/App.tsx                  ← Router + max-width layout wrapper
-    src/components/Nav.tsx       ← Game-switcher tabs + per-game sub-nav
-    src/pages/                   ← HomePage (auth), CreateDeckPage, LoadDeckPage, TestPage
+    src/components/Nav.tsx       ← Game-switcher tabs + per-game sub-nav (incl. Collection link)
+    src/pages/                   ← HomePage (auth), MyDecksPage, ProfilePage, TestPage
+    src/pages/CollectionPage.tsx ← Collection list + add-card UI (web)
+    src/pages/CollectionScanPage.tsx ← Live camera scanner via getUserMedia (Android)
+    src/pages/mtg/               ← CardBrowserPage, DeckBuilderPage
     src/pages/riftbound/         ← CardBrowserPage, DeckBuilderPage
 
 backend-rust/ (Axum, port 8080)
-    src/lib.rs                   ← Re-exports db/models/routes (needed by src/bin/)
+    src/lib.rs                   ← Re-exports db/models/routes/phash (needed by src/bin/)
     src/main.rs                  ← CORS, TraceLayer, router wiring
+    src/phash.rs                 ← Shared DCT perceptual hash (routes + hash_cards binary)
     src/routes/cards.rs          ← MTG /api/cards CRUD
     src/routes/decks.rs          ← MTG /api/list_decks, upload_deck, save_deck, load_deck
     src/routes/auth.rs           ← /api/register, /api/login, /api/whoami
+    src/routes/collection.rs     ← /api/collection CRUD + /api/collection/scan
     src/routes/riftbound/        ← /api/rb/cards and /api/rb/decks
-    src/models/{card,deck,user}.rs
+    src/models/{card,deck,user,collection}.rs
     src/models/riftbound/        ← RbCard, RbDeck structs
-    src/db/{cards,decks,users}.rs
+    src/db/{cards,decks,users,collection}.rs
     src/db/riftbound/            ← rb_cards/rb_decks queries + ensure_tables (auto-runs on startup)
     src/bin/seed_riftbound.rs    ← Fetches all cards from RiftScribe API per set
+    src/bin/hash_cards.rs        ← Downloads card art + computes pHash → card_hashes table
 
 database/
-    mtg_card_db.db               ← SQLite: cards (34k+ MTG), decks, users, rb_cards (950), rb_decks
+    mtg_card_db.db               ← SQLite: cards (34k+ MTG), decks, users, rb_cards (950),
+                                    rb_decks, collection, card_hashes
 ```
 
 **Key data flows:**
 - MTG cards: stored in SQLite from Scryfall bulk import. Searched via `LOWER(name) LIKE ?` with semicolon-separated multi-card support.
 - Riftbound cards: seeded from `https://riftscribe.gg/api/cards?set_id=OGN&limit=500` etc. Fetched via `/api/rb/cards?faction=fury&type=Unit`.
 - Decks (both games): stored as JSON text blobs in SQLite (`cards`/`main_deck`/`rune_deck` columns).
+- Collection: per-user rows in `collection` table (`game`, `card_id`, `is_foil`, `quantity`). Upsert on conflict increments quantity.
+- Card scanning: `card_hashes` table holds 64-bit DCT pHash per card. Populated by `bin/hash_cards.rs` (run once). Scan endpoint computes Hamming distance against all stored hashes; top-3 returned. Frontend streams camera via `getUserMedia` and posts a frame every 1.8 s.
 - Auth: JWT (24h expiry), `Authorization: Bearer <token>` header, `bcrypt` for password hashing.
 
 ---
@@ -148,3 +159,7 @@ database/
 - **`GET /health`** returns `"ok"` — used by load balancers.
 - **MTG formats:** commander, standard, modern, pioneer, legacy, vintage, pauper, brawl, historic, alchemy.
 - **Riftbound sets:** OGN, OGS, SFD, UNL (VEN empty). Factions: body, calm, chaos, colorless, fury, mind, order.
+- **`collection`/`card_hashes` tables** are created via `db::collection::ensure_tables` called from `db::create_pool` — same pattern as riftbound tables.
+- **pHash** lives in `src/phash.rs` (public) and is imported by both `routes/collection.rs` and `bin/hash_cards.rs` via `crate::phash::phash` / `tcg_backend::phash::phash`.
+- **Card scanning** uses `navigator.mediaDevices.getUserMedia` (browser API) in the React WebView — `@capacitor/camera` is installed but not used for the live-scan flow. `@capacitor/core` `Capacitor.isNativePlatform()` gates the Scan Card button on `CollectionPage`.
+- **`hash_cards` binary** must be run once after first deploy (and after any bulk card update) to populate `card_hashes`. Re-running is safe — `ON CONFLICT DO NOTHING`.

@@ -1,6 +1,6 @@
 # TCG Web Application
 
-A multi-game TCG platform. Currently supports **Magic: The Gathering** (deck builder, card browser) and **Riftbound** (card browser, deck storage). Rust/Axum backend, React/TypeScript frontend, SQLite database.
+A multi-game TCG platform. Supports **Magic: The Gathering** (deck builder, card browser, collection tracker) and **Riftbound** (card browser, deck storage, collection tracker). Rust/Axum backend, React/TypeScript frontend, SQLite database, Android app via Capacitor.
 
 ---
 
@@ -73,6 +73,15 @@ cd backend-rust
 DATABASE_URL="sqlite:../database/mtg_card_db.db" cargo run --bin seed_riftbound
 ```
 
+### Pre-compute card image hashes (for card scanning)
+
+Downloads card art and computes 64-bit DCT perceptual hashes for the `card_hashes` table. Required for the mobile camera scan feature. Downloads ~35k MTG + 950 Riftbound images with 20 concurrent connections; takes a few minutes. Safe to re-run — skips already-hashed cards.
+
+```sh
+cd backend-rust
+DATABASE_URL="sqlite:../database/mtg_card_db.db" cargo run --bin hash_cards
+```
+
 ### Docker
 
 ```sh
@@ -94,6 +103,7 @@ docker run -p 8080:8080 \
 - **Deck persistence** — save and load decks via `.txt` file upload
 - **Commander support** — commander selected separately
 - **Deck stats** — land count, permanent count, percentages
+- **Collection tracker** — log owned cards with quantity and foil flag; scan physical cards with the Android camera
 - **Auth** — register/login with JWT
 
 #### Supported MTG Formats
@@ -102,7 +112,12 @@ Commander · Standard · Modern · Pioneer · Legacy · Vintage · Pauper · Bra
 ### Riftbound
 - **Card browser** — filter by name, faction, type, rarity, set; hover to preview card image
 - **Deck storage** — save and load decks (champion + main deck + rune deck + battlefields)
+- **Collection tracker** — same as MTG: quantity, foil flag, camera scan on Android
 - **950 cards** across sets OGN, OGS, SFD, UNL (seeded from RiftScribe API)
+
+### Card Collection (both games)
+- **Web UI** — search for a card by name, add with quantity and foil flag, adjust counts with +/−
+- **Mobile camera scan** — live viewfinder streams rear camera, auto-scans every 1.8 s via perceptual image hashing (DCT pHash), shows top-3 matches with confidence; foil override checkbox since camera can't detect foiling
 
 #### Riftbound Card Types
 Unit · Spell · Gear · Rune · Legend · Battlefield
@@ -156,6 +171,18 @@ Base URL: `http://localhost:8080/api`
 | POST | `/rb/decks` | Save deck (JSON body) |
 | DELETE | `/rb/decks/{name}` | Delete deck |
 
+### Collection
+
+All endpoints require `Authorization: Bearer <token>`.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/collection` | List owned cards (`?game=mtg\|riftbound` optional filter) |
+| POST | `/collection` | Add card `{ game, card_id, is_foil? }` — increments quantity if same card+foil already exists |
+| PUT | `/collection/{id}` | Update `{ quantity?, is_foil? }` |
+| DELETE | `/collection/{id}` | Remove entry |
+| POST | `/collection/scan` | Upload card image (`multipart/form-data`, field `image`) → returns top-3 pHash matches |
+
 ### Auth
 
 | Method | Endpoint | Description |
@@ -181,21 +208,26 @@ tcg-website/
 │   │   ├── lib.rs           # Re-exports db/models/routes for shared use
 │   │   ├── main.rs          # Server setup, CORS, router
 │   │   ├── bin/
-│   │   │   └── seed_riftbound.rs  # One-shot Riftbound card importer
+│   │   │   ├── seed_riftbound.rs  # One-shot Riftbound card importer
+│   │   │   └── hash_cards.rs      # Pre-compute pHash for all card images
+│   │   ├── phash.rs         # Shared DCT perceptual hash (used by routes + hash_cards)
 │   │   ├── routes/
 │   │   │   ├── cards.rs     # MTG card CRUD
 │   │   │   ├── decks.rs     # MTG deck upload/save/load
 │   │   │   ├── auth.rs      # Register/login/whoami
+│   │   │   ├── collection.rs # /api/collection CRUD + /api/collection/scan
 │   │   │   └── riftbound/   # /api/rb/cards and /api/rb/decks
 │   │   ├── models/
 │   │   │   ├── card.rs      # MTG Card struct
 │   │   │   ├── deck.rs      # MTG Deck struct
 │   │   │   ├── user.rs
+│   │   │   ├── collection.rs # CollectionEntry struct
 │   │   │   └── riftbound/   # RbCard, RbDeck structs
 │   │   └── db/
 │   │       ├── cards.rs     # MTG SQLx queries
 │   │       ├── decks.rs
 │   │       ├── users.rs
+│   │       ├── collection.rs # collection + card_hashes queries + ensure_tables
 │   │       └── riftbound/   # rb_cards/rb_decks queries + auto-migration
 │   ├── Cargo.toml
 │   └── Dockerfile
@@ -215,12 +247,15 @@ tcg-website/
 │           ├── mtg/
 │           │   ├── CardBrowserPage.tsx # MTG card search + preview
 │           │   └── DeckBuilderPage.tsx # MTG deck builder + save/load
+│           ├── CollectionPage.tsx      # Collection list + add card (web)
+│           ├── CollectionScanPage.tsx  # Live camera scanner (Android)
 │           └── riftbound/
 │               ├── CardBrowserPage.tsx # Riftbound card search + preview
 │               └── DeckBuilderPage.tsx # Riftbound deck builder + save/load
 │
 └── database/
-    └── mtg_card_db.db   # SQLite — cards (34k+ MTG), decks, users, rb_cards (950), rb_decks
+    └── mtg_card_db.db   # SQLite — cards (34k+ MTG), decks, users, rb_cards (950), rb_decks,
+                         #          collection, card_hashes
 ```
 
 ---
@@ -263,6 +298,10 @@ Upload `.txt` files with one card per line:
 
 **Riftbound cards missing**
 - Run `cargo run --bin seed_riftbound` to import from RiftScribe
+
+**Card scan returns no matches / weak matches**
+- The `card_hashes` table may be empty — run `cargo run --bin hash_cards` to populate it
+- Ensure the card art fills the viewfinder frame and lighting is even
 
 ---
 
