@@ -18,6 +18,10 @@ const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
 const RARITIES = ["", "common", "uncommon", "rare", "epic", "showcase"];
 const SETS = ["", "OGN", "OGS", "SFD", "UNL"];
 
+const PREVIEW_W = 200;
+const PREVIEW_H = 280;
+const OFFSET = 16;
+
 const DeckBuilderPage: React.FC = () => {
   const { username } = useAuth();
   const [searchName, setSearchName] = useState("");
@@ -27,7 +31,8 @@ const DeckBuilderPage: React.FC = () => {
   const [set, setSet] = useState("");
   const [suggestions, setSuggestions] = useState<RbCard[]>([]);
   const [searching, setSearching] = useState(false);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
   const [deckName, setDeckName] = useState("");
   const [champion, setChampion] = useState<RbCard | null>(null);
@@ -236,18 +241,22 @@ const DeckBuilderPage: React.FC = () => {
           <div style={{ fontSize: 12, fontWeight: 700, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.6em" }}>
             Results {suggestions.length > 0 && `(${suggestions.length})`}
           </div>
-          <div style={{ maxHeight: 480, overflowY: "auto" }}>
+          <div
+            style={{ maxHeight: 480, overflowY: "auto" }}
+            onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setPreview(null)}
+          >
             {suggestions.map((card) => (
-              <div key={card.id} style={{ display: "flex", alignItems: "center", gap: "0.5em", padding: "0.35em 0", borderBottom: `1px solid ${T.border}`, position: "relative" }}>
-                <span
-                  style={{ fontWeight: 500, flex: 1, fontSize: 13, color: T.textBright, cursor: "default", position: "relative" }}
-                  onMouseEnter={() => setHovered(card.id)}
-                  onMouseLeave={() => setHovered(null)}
-                >
+              <div
+                key={card.id}
+                style={{ display: "flex", alignItems: "center", gap: "0.5em", padding: "0.35em 0", borderBottom: `1px solid ${T.border}` }}
+                onMouseEnter={() => {
+                  const src = card.image_medium ?? card.image;
+                  src ? setPreview({ src, alt: card.name }) : setPreview(null);
+                }}
+              >
+                <span style={{ fontWeight: 500, flex: 1, fontSize: 13, color: T.textBright }}>
                   {card.name}
-                  {hovered === card.id && (card.image_medium ?? card.image) && (
-                    <img src={card.image_medium ?? card.image} alt={card.name} style={{ position: "absolute", left: "105%", top: 0, width: 180, zIndex: 50, borderRadius: 6, boxShadow: `0 4px 16px #000099`, border: `1px solid ${T.borderGold}` }} />
-                  )}
                 </span>
                 <TypeBadge type={card.card_type} />
                 <button onClick={() => addCard(card)} style={{ padding: "2px 8px", fontSize: 11, background: `${T.purple}33`, color: T.purple, border: `1px solid ${T.purple}55`, borderRadius: 3, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}>
@@ -295,6 +304,32 @@ const DeckBuilderPage: React.FC = () => {
 
       <RbDeckStats champion={champion} mainDeck={mainDeck} runeDeck={runeDeck} battlefields={battlefields} />
       <RbVisualStack champion={champion} mainDeck={mainDeck} runeDeck={runeDeck} battlefields={battlefields} />
+
+      {/* Fixed card preview — follows cursor, always in viewport */}
+      {preview && (() => {
+        const left = mouse.x + OFFSET + PREVIEW_W < window.innerWidth
+          ? mouse.x + OFFSET
+          : mouse.x - PREVIEW_W - OFFSET;
+        const top = Math.max(10, Math.min(mouse.y - PREVIEW_H / 2, window.innerHeight - PREVIEW_H - 10));
+        return (
+          <img
+            src={preview.src}
+            alt={preview.alt}
+            style={{
+              position: "fixed",
+              left,
+              top,
+              width: PREVIEW_W,
+              height: "auto",
+              borderRadius: 10,
+              border: `1px solid ${T.borderGold}`,
+              boxShadow: "0 8px 32px #00000099",
+              zIndex: 1000,
+              pointerEvents: "none",
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };
