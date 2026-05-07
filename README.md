@@ -46,6 +46,24 @@ npm start
 # → http://localhost:3000
 ```
 
+### Android App (Capacitor)
+
+Prerequisites: [Android Studio](https://developer.android.com/studio) with SDK + Java 17+
+
+```sh
+cd frontend
+npm run build              # build React app
+npx cap sync android       # copy build into Android project
+npx cap open android       # open Android Studio → Build → Build APK(s)
+```
+
+Run directly on a connected device or emulator:
+```sh
+npx cap run android
+```
+
+**Important:** Edit `frontend/.env.production` and set `REACT_APP_API_URL` to your deployed server address before building for Android. The Android app cannot connect to `localhost`.
+
 ### Seed Riftbound cards
 
 Fetches all cards from the RiftScribe API and upserts them into `rb_cards`. Safe to re-run.
@@ -113,10 +131,11 @@ Base URL: `http://localhost:8080/api`
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/list_decks` | List all saved decks |
-| GET | `/load_deck?deck_name={name}` | Load a deck by name |
-| POST | `/upload_deck` | Parse a deck file (multipart) |
-| POST | `/save_deck` | Parse and save a deck file (multipart) |
+| GET | `/decks` | List all saved decks (auth required) |
+| GET | `/decks/{name}` | Load a deck by name (auth required) |
+| POST | `/decks` | Save a deck as JSON (auth required) |
+| DELETE | `/decks/{name}` | Delete a deck (auth required) |
+| POST | `/upload_deck` | Parse a deck `.txt` file — returns card list, does not save |
 
 ### Riftbound Cards
 
@@ -189,12 +208,16 @@ tcg-website/
 │       │   ├── Nav.tsx       # Game switcher + per-game sub-nav
 │       │   └── ...           # FindCard, FoundCardsComponent, visualStack, DeckStats
 │       └── pages/
-│           ├── HomePage.tsx       # Auth (login/register)
-│           ├── CreateDeckPage.tsx # MTG deck builder
-│           ├── LoadDeckPage.tsx   # MTG deck loader
+│           ├── HomePage.tsx            # Landing page
+│           ├── LoginPage.tsx           # Auth (login/register)
+│           ├── MyDecksPage.tsx         # Saved decks list (MTG + Riftbound)
+│           ├── ProfilePage.tsx         # User profile + password change
+│           ├── mtg/
+│           │   ├── CardBrowserPage.tsx # MTG card search + preview
+│           │   └── DeckBuilderPage.tsx # MTG deck builder + save/load
 │           └── riftbound/
-│               ├── CardBrowserPage.tsx  # Riftbound card search + preview
-│               └── DeckBuilderPage.tsx  # (in progress)
+│               ├── CardBrowserPage.tsx # Riftbound card search + preview
+│               └── DeckBuilderPage.tsx # Riftbound deck builder + save/load
 │
 └── database/
     └── mtg_card_db.db   # SQLite — cards (34k+ MTG), decks, users, rb_cards (950), rb_decks
@@ -236,7 +259,7 @@ Upload `.txt` files with one card per line:
 
 **Frontend won't connect**
 - Confirm backend is running on port 8080
-- API base URL is in `frontend/src/api.tsx`
+- API base URL is set via `REACT_APP_API_URL` env var (see `frontend/.env.development`)
 
 **Riftbound cards missing**
 - Run `cargo run --bin seed_riftbound` to import from RiftScribe

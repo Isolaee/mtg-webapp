@@ -3,7 +3,8 @@ use tcg_backend::{db, routes};
 use axum::Router;
 use dotenvy::dotenv;
 use std::env;
-use tower_http::cors::{Any, CorsLayer};
+use axum::http::HeaderValue;
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -24,9 +25,13 @@ async fn main() -> anyhow::Result<()> {
     let pool = db::create_pool(&database_url).await?;
 
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_origin([
+            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+            "capacitor://localhost".parse::<HeaderValue>().unwrap(),
+            "https://localhost".parse::<HeaderValue>().unwrap(),
+        ])
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any);
 
     let app = Router::new()
         .route("/health", axum::routing::get(|| async { "ok" }))

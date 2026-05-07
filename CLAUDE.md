@@ -77,6 +77,25 @@ npm run build
 npm test
 ```
 
+### Android App — Capacitor (`frontend/`)
+
+Prerequisites: [Android Studio](https://developer.android.com/studio) with SDK + Java 17+
+
+```bash
+npm run build                # build React app first (outputs to frontend/build/)
+npx cap sync android         # copy build into Android project + sync plugins
+npx cap open android         # open Android Studio → Build → Build APK(s)
+```
+
+Run on connected device or emulator:
+```bash
+npx cap run android
+```
+
+**API URL for Android build:** edit `frontend/.env.production` and set `REACT_APP_API_URL` to your deployed server address before `npm run build`. The Android app cannot reach `localhost`.
+
+Re-run `npm run build && npx cap sync android` after every React change.
+
 ---
 
 ## Architecture
@@ -118,7 +137,7 @@ database/
 
 ## Conventions
 
-- **Frontend base URL:** `frontend/src/api.tsx` — `API_BASE_URL = "http://localhost:8080/api"`
+- **Frontend base URL:** `frontend/src/api.tsx` — reads `REACT_APP_API_URL` env var, falls back to `http://localhost:8080/api`. Set in `.env.development` / `.env.production`.
 - **SQLx pattern:** Use runtime `sqlx::query_as::<_, T>(&sql)` — NOT `query_as!` macros. The original SQLite schema has loose types requiring `CAST(cmc AS REAL)` etc. in SELECT queries.
 - **Serde renames:** MTG `Card` struct uses `#[serde(rename)]` to map lowercase DB columns to camelCase JSON (`cardtype` → `cardType`, `oracletext` → `oracleText`). Keep this pattern for new MTG fields.
 - **Riftbound DB columns** are snake_case and map directly (no renaming needed).
