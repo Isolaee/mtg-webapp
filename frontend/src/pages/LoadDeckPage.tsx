@@ -34,7 +34,7 @@ const LoadDeckPage: React.FC = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/upload_deck", {
+      const res = await fetch("http://localhost:8080/api/upload_deck", {
         method: "POST",
         body: formData,
       });

@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, name, description, format, commander, cards FROM decks WHERE name=?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "format",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "commander",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "cards",
+        "ordinal": 5,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "d168f0c1806e35362d82a29dfb84ce7c4d09c3d546482d41c737d94381892d98"
+}

@@ -50,20 +50,56 @@ bd close <id>         # Complete work
 <!-- END BEADS INTEGRATION -->
 
 
-## Build & Test
+## Build & Run
 
-_Add your build and test commands here_
-
+### Rust Backend (target: `backend-rust/`)
 ```bash
-# Example:
-# npm install
-# npm test
+cargo build                  # build
+cargo run                    # run on :8080
+cargo watch -x run           # hot reload (cargo-watch)
+cargo test                   # run tests
+cargo clippy                 # lint
 ```
 
-## Architecture Overview
+### React Frontend (`frontend/`)
+```bash
+npm install
+npm start                    # dev server on :3000
+npm run build                # production build
+npm test                     # run tests
+```
 
-_Add a brief overview of your project architecture_
+## Architecture
 
-## Conventions & Patterns
+**Stack:** Axum (Rust) + React (TypeScript) + SQLite (via SQLx)
 
-_Add your project-specific conventions here_
+```
+frontend/ (React + TypeScript, port 3000)
+    └── src/api.tsx          ← Axios client, all API calls go through here
+    └── src/pages/           ← CreateDeck, LoadDeck, Home, Test
+    └── src/components/      ← FindCard, visualStack, DeckStats, etc.
+    └── src/context/AuthContext.tsx
+
+backend-rust/ (Axum, port 8080)
+    └── src/main.rs          ← router, CORS, JWT layer setup
+    └── src/routes/          ← handler modules per resource
+    └── src/models/          ← serde structs (Card, Deck, User)
+    └── src/db/              ← SQLx pool + query functions
+
+database/
+    └── mtg_card_db.db       ← SQLite, tables: cards, decks, users
+```
+
+**Key data flow:** Frontend calls JSON REST endpoints. Card data is stored locally in SQLite (imported from Scryfall bulk data). Deck lists are stored as JSON blobs in the `decks` table. Auth uses JWT (Bearer token in Authorization header).
+
+**Card model fields:** name (PK), manacost, cmc, colors, colorIdentity, power, toughness, oracleText, loyalty, typeline, cardType, artist, legalities, image (Scryfall URL).
+
+**Deck model:** id, name, description, format, commander (JSON), cards (JSON array).
+
+## Conventions
+
+- Frontend base URL is configured in `frontend/src/api.tsx` (`API_BASE_URL`)
+- Deck formats: commander, standard, modern, pioneer, legacy, vintage, pauper, brawl, historic, alchemy
+- Card search supports semicolon-separated names: `/api/cards?name=sol+ring;mana+crypt`
+- DB columns are lowercase (`cardtype`, `oracletext`, `coloridentity`); Rust serialises them as camelCase (`cardType`, `oracleText`, `colorIdentity`) via `#[serde(rename)]` on the `Card` struct — keep this pattern when adding fields
+- `GET /health` returns `"ok"` — used by load balancers / container orchestrators

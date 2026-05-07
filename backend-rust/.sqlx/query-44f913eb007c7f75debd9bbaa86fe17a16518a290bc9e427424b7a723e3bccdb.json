@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE cards SET manacost=?, cmc=?, colors=?, coloridentity=?, power=?, toughness=?,\n                          oracletext=?, loyalty=?, supertype=?, cardtype=?, typeline=?,\n                          artist=?, legalities=?, image=?\n         WHERE name=?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 15
+    },
+    "nullable": []
+  },
+  "hash": "44f913eb007c7f75debd9bbaa86fe17a16518a290bc9e427424b7a723e3bccdb"
+}

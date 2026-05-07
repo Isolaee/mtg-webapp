@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO cards (name, manacost, cmc, colors, coloridentity, power, toughness,\n                            oracletext, loyalty, supertype, cardtype, typeline, artist, legalities, image)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 15
+    },
+    "nullable": []
+  },
+  "hash": "c22d9868df6bc272a97e278d183dae397c02614c7021d07782d2b53b0bd5cf25"
+}

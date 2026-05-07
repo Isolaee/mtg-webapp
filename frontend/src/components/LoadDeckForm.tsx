@@ -28,7 +28,7 @@ const DeckList: React.FC<{
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("http://localhost:5000/api/list_decks");
+        const res = await fetch("http://localhost:8080/api/list_decks");
         if (!res.ok) {
           setError("Failed to fetch decks.");
           setLoading(false);
@@ -121,7 +121,7 @@ const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
       formData.append("deckfile", fileInputRef.current.files[0]);
     }
     try {
-      const res = await fetch("http://localhost:5000/api/save_deck", {
+      const res = await fetch("http://localhost:8080/api/save_deck", {
         method: "POST",
         body: formData,
       });
@@ -146,7 +146,7 @@ const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
     setErrorMsg(null);
     try {
       const res = await fetch(
-        `http://localhost:5000/api/load_deck?deck_name=${encodeURIComponent(
+        `http://localhost:8080/api/load_deck?deck_name=${encodeURIComponent(
           name,
         )}`,
       );
