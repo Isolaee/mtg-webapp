@@ -223,3 +223,12 @@ pub async fn delete_deck(pool: &SqlitePool, name: &str) -> anyhow::Result<u64> {
 
     Ok(result.rows_affected())
 }
+
+pub async fn delete_card(pool: &SqlitePool, id: &str) -> anyhow::Result<u64> {
+    let result = sqlx::query("DELETE FROM rb_cards WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await?;
+
+    Ok(result.rows_affected())
+}
