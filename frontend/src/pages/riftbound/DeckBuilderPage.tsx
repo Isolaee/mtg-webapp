@@ -8,6 +8,7 @@ import {
   RbCard,
   RbDeckSummary,
 } from "../../api";
+import { useAuth } from "../../context/AuthContext";
 import RbVisualStack, { DeckEntry } from "../../components/riftbound/RbVisualStack";
 import RbDeckStats, { validateDeck } from "../../components/riftbound/RbDeckStats";
 import { T } from "../../theme";
@@ -18,6 +19,7 @@ const RARITIES = ["", "common", "uncommon", "rare", "epic", "showcase"];
 const SETS = ["", "OGN", "OGS", "SFD", "UNL"];
 
 const DeckBuilderPage: React.FC = () => {
+  const { username } = useAuth();
   const [searchName, setSearchName] = useState("");
   const [faction, setFaction] = useState("");
   const [cardType, setCardType] = useState("");
@@ -143,18 +145,19 @@ const DeckBuilderPage: React.FC = () => {
         />
         <button
           onClick={saveDeck}
-          disabled={!deckName.trim() || !deckValid}
+          disabled={!username || !deckName.trim() || !deckValid}
+          title={!username ? "Log in to save decks" : undefined}
           style={{
             padding: "0.5em 1.2em",
-            background: !deckName.trim() || !deckValid ? `${T.purple}33` : `${T.purple}CC`,
-            color: T.goldLight,
+            background: !username || !deckName.trim() || !deckValid ? `${T.purple}33` : `${T.purple}CC`,
+            color: !username || !deckName.trim() || !deckValid ? T.textDim : T.goldLight,
             border: `1px solid ${T.purple}88`,
             borderRadius: 4,
             fontWeight: 700,
             fontSize: "0.85em",
             letterSpacing: "0.05em",
             textTransform: "uppercase",
-            cursor: !deckName.trim() || !deckValid ? "default" : "pointer",
+            cursor: !username || !deckName.trim() || !deckValid ? "default" : "pointer",
           }}
         >
           Save Deck
@@ -164,17 +167,24 @@ const DeckBuilderPage: React.FC = () => {
             {saveMsg}
           </span>
         )}
+        {!username && (
+          <span style={{ fontSize: 12, color: T.textDim, fontStyle: "italic" }}>
+            Log in to save or load decks
+          </span>
+        )}
         <button
           onClick={loadOpen ? () => setLoadOpen(false) : openLoadPanel}
+          disabled={!username}
+          title={!username ? "Log in to load saved decks" : undefined}
           style={{
             padding: "0.5em 1.2em",
             background: "transparent",
-            color: T.gold,
-            border: `1px solid ${T.gold}55`,
+            color: username ? T.gold : T.textDim,
+            border: `1px solid ${username ? T.gold : T.border}55`,
             borderRadius: 4,
             fontWeight: 600,
             fontSize: "0.85em",
-            cursor: "pointer",
+            cursor: username ? "pointer" : "default",
           }}
         >
           {loadOpen ? "Cancel" : "Load Deck"}

@@ -25,14 +25,7 @@ const App: React.FC = () => (
             <Route path="/login" element={<LoginPage />} />
             {/* MTG */}
             <Route path="/" element={<HomePage />} />
-            <Route
-              path="/deck-builder"
-              element={
-                <ProtectedRoute>
-                  <MtgDeckBuilderPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/deck-builder" element={<MtgDeckBuilderPage />} />
             <Route path="/test" element={<TestPage />} />
             <Route
               path="/my-decks"
@@ -52,14 +45,7 @@ const App: React.FC = () => (
             />
             {/* Riftbound */}
             <Route path="/riftbound" element={<CardBrowserPage />} />
-            <Route
-              path="/riftbound/deck-builder"
-              element={
-                <ProtectedRoute>
-                  <RbDeckBuilderPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/riftbound/deck-builder" element={<RbDeckBuilderPage />} />
           </Routes>
         </ErrorBoundary>
       </div>

@@ -11,6 +11,7 @@ import {
   fetchMtgDeck,
   saveMtgDeck,
 } from "../../api";
+import { useAuth } from "../../context/AuthContext";
 import { T } from "../../theme";
 
 const API_BASE_URL = "http://localhost:8080/api";
@@ -21,6 +22,7 @@ interface DeckEntry {
 }
 
 const DeckBuilderPage: React.FC = () => {
+  const { username } = useAuth();
   const [deck, setDeck] = useState<DeckEntry[]>([]);
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
@@ -181,18 +183,19 @@ const DeckBuilderPage: React.FC = () => {
         />
         <button
           onClick={handleSave}
-          disabled={!deckName.trim()}
+          disabled={!username || !deckName.trim()}
+          title={!username ? "Log in to save decks" : undefined}
           style={{
             padding: "0.5em 1.2em",
-            background: !deckName.trim() ? `${T.blue}33` : `${T.blue}CC`,
-            color: T.bg,
+            background: !username || !deckName.trim() ? `${T.blue}33` : `${T.blue}CC`,
+            color: !username || !deckName.trim() ? T.textDim : T.bg,
             border: `1px solid ${T.blue}88`,
             borderRadius: 4,
             fontWeight: 700,
             fontSize: "0.85em",
             letterSpacing: "0.05em",
             textTransform: "uppercase",
-            cursor: !deckName.trim() ? "default" : "pointer",
+            cursor: !username || !deckName.trim() ? "default" : "pointer",
           }}
         >
           Save Deck
@@ -202,17 +205,24 @@ const DeckBuilderPage: React.FC = () => {
             {saveMsg}
           </span>
         )}
+        {!username && (
+          <span style={{ fontSize: 12, color: T.textDim, fontStyle: "italic" }}>
+            Log in to save or load decks
+          </span>
+        )}
         <button
           onClick={loadOpen ? () => setLoadOpen(false) : openLoadPanel}
+          disabled={!username}
+          title={!username ? "Log in to load saved decks" : undefined}
           style={{
             padding: "0.5em 1.2em",
             background: "transparent",
-            color: T.gold,
-            border: `1px solid ${T.gold}55`,
+            color: username ? T.gold : T.textDim,
+            border: `1px solid ${username ? T.gold : T.border}55`,
             borderRadius: 4,
             fontWeight: 600,
             fontSize: "0.85em",
-            cursor: "pointer",
+            cursor: username ? "pointer" : "default",
           }}
         >
           {loadOpen ? "Cancel" : "Load Deck"}
