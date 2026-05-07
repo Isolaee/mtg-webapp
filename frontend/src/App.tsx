@@ -7,11 +7,10 @@ import { AuthProvider } from "./context/AuthContext";
 
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
-import CreateDeckPage from "./pages/CreateDeckPage";
-import LoadDeckPage from "./pages/LoadDeckPage";
+import MtgDeckBuilderPage from "./pages/mtg/DeckBuilderPage";
 import TestPage from "./pages/TestPage";
 import CardBrowserPage from "./pages/riftbound/CardBrowserPage";
-import DeckBuilderPage from "./pages/riftbound/DeckBuilderPage";
+import RbDeckBuilderPage from "./pages/riftbound/DeckBuilderPage";
 import MyDecksPage from "./pages/MyDecksPage";
 import ProfilePage from "./pages/ProfilePage";
 
@@ -27,18 +26,10 @@ const App: React.FC = () => (
             {/* MTG */}
             <Route path="/" element={<HomePage />} />
             <Route
-              path="/create-deck"
+              path="/deck-builder"
               element={
                 <ProtectedRoute>
-                  <CreateDeckPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/load-deck"
-              element={
-                <ProtectedRoute>
-                  <LoadDeckPage />
+                  <MtgDeckBuilderPage />
                 </ProtectedRoute>
               }
             />
@@ -65,7 +56,7 @@ const App: React.FC = () => (
               path="/riftbound/deck-builder"
               element={
                 <ProtectedRoute>
-                  <DeckBuilderPage />
+                  <RbDeckBuilderPage />
                 </ProtectedRoute>
               }
             />

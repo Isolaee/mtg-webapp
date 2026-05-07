@@ -23,11 +23,6 @@ export interface Card {
   image?: string;
 }
 
-export interface Deck {
-  id: number;
-  name: string;
-}
-
 export const fetchCards = async (
   filters?: Record<string, string>,
 ): Promise<Card[]> => {
@@ -37,20 +32,26 @@ export const fetchCards = async (
   return response.data;
 };
 
-export const fetchDecks = async (): Promise<Deck[]> => {
-  const response = await axios.get<Deck[]>(`${API_BASE_URL}/decks`);
-  return response.data;
-};
-
-export const createDeck = async (deckData: Partial<Deck>): Promise<Deck> => {
-  const response = await axios.post<Deck>(`${API_BASE_URL}/decks`, deckData);
-  return response.data;
-};
-
 export interface MtgDeckSummary {
-  deck_name: string;
-  deck_description?: string;
+  name: string;
+  description?: string;
   format: string;
+}
+
+export interface MtgDeckFull {
+  name: string;
+  format: string;
+  description?: string;
+  commander?: Card;
+  cards: Card[];
+}
+
+export interface MtgDeckSavePayload {
+  name: string;
+  format: string;
+  description?: string;
+  commander?: Card;
+  cards: Card[];
 }
 
 export interface UserProfile {
@@ -80,10 +81,24 @@ export const changePassword = async (
 
 export const fetchMtgDeckList = async (): Promise<MtgDeckSummary[]> => {
   const response = await axios.get<{ decks: MtgDeckSummary[] }>(
-    `${API_BASE_URL}/list_decks`,
+    `${API_BASE_URL}/decks`,
     { headers: authHeaders() },
   );
   return response.data.decks;
+};
+
+export const fetchMtgDeck = async (name: string): Promise<MtgDeckFull> => {
+  const response = await axios.get<MtgDeckFull>(
+    `${API_BASE_URL}/decks/${encodeURIComponent(name)}`,
+    { headers: authHeaders() },
+  );
+  return response.data;
+};
+
+export const saveMtgDeck = async (payload: MtgDeckSavePayload): Promise<void> => {
+  await axios.post(`${API_BASE_URL}/decks`, payload, {
+    headers: authHeaders(),
+  });
 };
 
 export const deleteMtgDeck = async (name: string): Promise<void> => {

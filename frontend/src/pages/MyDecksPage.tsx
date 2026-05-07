@@ -40,7 +40,7 @@ const MyDecksPage: React.FC = () => {
   const handleDeleteMtg = async (name: string) => {
     if (!window.confirm(`Delete "${name}"?`)) return;
     await deleteMtgDeck(name);
-    setMtgDecks((prev) => prev.filter((d) => d.deck_name !== name));
+    setMtgDecks((prev) => prev.filter((d) => d.name !== name));
   };
 
   const handleDeleteRb = async (name: string) => {
@@ -48,8 +48,6 @@ const MyDecksPage: React.FC = () => {
     await deleteRbDeck(name);
     setRbDecks((prev) => prev.filter((d) => d.name !== name));
   };
-
-  const tabColor = tab === "mtg" ? T.blue : T.purple;
 
   return (
     <div>
@@ -89,11 +87,11 @@ const MyDecksPage: React.FC = () => {
 
       {!loading && !error && tab === "mtg" && (
         <DeckGrid
-          decks={mtgDecks.map((d) => ({ name: d.deck_name, description: d.deck_description, format: d.format }))}
+          decks={mtgDecks.map((d) => ({ name: d.name, description: d.description, format: d.format }))}
           color={T.blue}
           emptyMsg="No MTG decks saved yet. Head to the deck builder to get started."
           onDelete={handleDeleteMtg}
-          onOpen={() => navigate("/create-deck")}
+          onOpen={() => navigate("/deck-builder")}
         />
       )}
 

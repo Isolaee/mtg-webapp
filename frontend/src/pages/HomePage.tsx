@@ -16,8 +16,7 @@ function HomePage() {
           description="Search 34,000+ cards, visualize your deck, upload existing lists, and save decks to your account."
           color={T.blue}
           links={[
-            { to: "/create-deck", label: "Create Deck" },
-            { to: "/load-deck", label: "Upload List" },
+            { to: "/deck-builder", label: "Deck Builder" },
           ]}
         />
         <GameCard
