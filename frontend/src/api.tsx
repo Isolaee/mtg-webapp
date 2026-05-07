@@ -230,3 +230,78 @@ export const deleteRbDeck = async (name: string): Promise<void> => {
     { headers: authHeaders() },
   );
 };
+
+// ── Collection ───────────────────────────────────────────────────────────────
+
+export interface CollectionEntry {
+  id: number;
+  user_id: string;
+  game: "mtg" | "riftbound";
+  card_id: string;
+  is_foil: number;
+  quantity: number;
+  added_at?: string;
+}
+
+export interface ScanMatch {
+  game: "mtg" | "riftbound";
+  card_id: string;
+  card_name: string;
+  image?: string;
+  distance: number;
+}
+
+export const fetchCollection = async (
+  game?: "mtg" | "riftbound",
+): Promise<CollectionEntry[]> => {
+  const response = await axios.get<{ collection: CollectionEntry[] }>(
+    `${API_BASE_URL}/collection`,
+    { headers: authHeaders(), params: game ? { game } : undefined },
+  );
+  return response.data.collection;
+};
+
+export const addToCollection = async (entry: {
+  game: "mtg" | "riftbound";
+  card_id: string;
+  is_foil?: boolean;
+}): Promise<number> => {
+  const response = await axios.post<{ id: number }>(
+    `${API_BASE_URL}/collection`,
+    entry,
+    { headers: authHeaders() },
+  );
+  return response.data.id;
+};
+
+export const updateCollectionEntry = async (
+  id: number,
+  patch: { quantity?: number; is_foil?: boolean },
+): Promise<void> => {
+  await axios.put(`${API_BASE_URL}/collection/${id}`, patch, {
+    headers: authHeaders(),
+  });
+};
+
+export const removeFromCollection = async (id: number): Promise<void> => {
+  await axios.delete(`${API_BASE_URL}/collection/${id}`, {
+    headers: authHeaders(),
+  });
+};
+
+export const scanCard = async (imageBase64: string): Promise<ScanMatch[]> => {
+  const byteString = atob(imageBase64);
+  const bytes = new Uint8Array(byteString.length);
+  for (let i = 0; i < byteString.length; i++) {
+    bytes[i] = byteString.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: "image/jpeg" });
+  const form = new FormData();
+  form.append("image", blob, "scan.jpg");
+  const response = await axios.post<{ matches: ScanMatch[] }>(
+    `${API_BASE_URL}/collection/scan`,
+    form,
+    { headers: { ...authHeaders(), "Content-Type": "multipart/form-data" } },
+  );
+  return response.data.matches;
+};
