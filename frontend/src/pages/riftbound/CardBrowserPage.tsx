@@ -8,7 +8,8 @@ const RARITIES = ["", "common", "uncommon", "rare", "epic", "showcase"];
 const SETS = ["", "OGN", "OGS", "SFD", "UNL"];
 
 const PREVIEW_W = 220;
-const PREVIEW_H = 308; // approximate at 220px wide (standard card ratio)
+const PREVIEW_H = 308;
+const OFFSET = 16;
 
 const CardBrowserPage: React.FC = () => {
   const [cards, setCards] = useState<RbCard[]>([]);
@@ -22,7 +23,7 @@ const CardBrowserPage: React.FC = () => {
   const [set, setSet] = useState("");
 
   const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
-  const [previewY, setPreviewY] = useState(0);
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
   const search = async () => {
     setLoading(true);
@@ -51,7 +52,10 @@ const CardBrowserPage: React.FC = () => {
     catch { return []; }
   };
 
-  const previewTop = Math.max(10, Math.min(previewY - PREVIEW_H / 2, window.innerHeight - PREVIEW_H - 10));
+  const previewLeft = mouse.x + OFFSET + PREVIEW_W < window.innerWidth
+    ? mouse.x + OFFSET
+    : mouse.x - PREVIEW_W - OFFSET;
+  const previewTop = Math.max(10, Math.min(mouse.y - PREVIEW_H / 2, window.innerHeight - PREVIEW_H - 10));
 
   return (
     <div>
@@ -114,7 +118,7 @@ const CardBrowserPage: React.FC = () => {
       {/* Results list */}
       <div
         style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, overflow: "hidden" }}
-        onMouseMove={(e) => setPreviewY(e.clientY)}
+        onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
         onMouseLeave={() => setPreview(null)}
       >
         {cards.map((card, i) => (
@@ -182,7 +186,7 @@ const CardBrowserPage: React.FC = () => {
           alt={preview.alt}
           style={{
             position: "fixed",
-            right: 24,
+            left: previewLeft,
             top: previewTop,
             width: PREVIEW_W,
             height: "auto",
