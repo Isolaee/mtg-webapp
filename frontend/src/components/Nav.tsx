@@ -69,7 +69,7 @@ const Nav: React.FC = () => {
         </Link>
 
         {/* Game tabs */}
-        <GameTab to="/" label="Magic: The Gathering" active={!pathname.startsWith("/riftbound") && !isHome} color={T.blue} />
+        <GameTab to="/cards" label="Magic: The Gathering" active={!pathname.startsWith("/riftbound") && !isHome} color={T.blue} />
         <GameTab to="/riftbound" label="Riftbound" active={pathname.startsWith("/riftbound")} color={T.purple} />
 
         <div style={{ flex: 1 }} />
