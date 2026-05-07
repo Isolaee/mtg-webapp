@@ -53,6 +53,31 @@ export interface MtgDeckSummary {
   format: string;
 }
 
+export interface UserProfile {
+  username: string;
+  created_at?: string;
+  mtg_deck_count: number;
+  rb_deck_count: number;
+}
+
+export const fetchProfile = async (): Promise<UserProfile> => {
+  const response = await axios.get<UserProfile>(`${API_BASE_URL}/profile`, {
+    headers: authHeaders(),
+  });
+  return response.data;
+};
+
+export const changePassword = async (
+  old_password: string,
+  new_password: string,
+): Promise<void> => {
+  await axios.post(
+    `${API_BASE_URL}/change-password`,
+    { old_password, new_password },
+    { headers: authHeaders() },
+  );
+};
+
 export const fetchMtgDeckList = async (): Promise<MtgDeckSummary[]> => {
   const response = await axios.get<{ decks: MtgDeckSummary[] }>(
     `${API_BASE_URL}/list_decks`,

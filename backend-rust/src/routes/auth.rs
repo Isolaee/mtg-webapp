@@ -56,6 +56,8 @@ pub fn router(pool: SqlitePool) -> Router {
         .route("/register", post(register))
         .route("/login", post(login))
         .route("/whoami", get(whoami))
+        .route("/profile", get(profile))
+        .route("/change-password", post(change_password))
         .with_state(pool)
 }
 
@@ -113,5 +115,82 @@ async fn whoami(req: axum::extract::Request) -> impl IntoResponse {
     match extract_username(auth) {
         Ok(username) => Json(serde_json::json!({"username": username})).into_response(),
         Err(_) => (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"msg": "Invalid or missing token"}))).into_response(),
+    }
+}
+
+async fn profile(
+    State(pool): State<SqlitePool>,
+    req: axum::extract::Request,
+) -> impl IntoResponse {
+    let auth = req
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let username = match extract_username(auth) {
+        Ok(u) => u,
+        Err(_) => return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"msg": "Unauthorized"}))).into_response(),
+    };
+
+    let user = match db::users::find_by_username(&pool, &username).await {
+        Ok(Some(u)) => u,
+        _ => return (StatusCode::NOT_FOUND, Json(serde_json::json!({"msg": "User not found"}))).into_response(),
+    };
+
+    let mtg_count = db::users::count_mtg_decks(&pool, &username).await.unwrap_or(0);
+    let rb_count = db::users::count_rb_decks(&pool, &username).await.unwrap_or(0);
+
+    Json(serde_json::json!({
+        "username": user.username,
+        "created_at": user.created_at,
+        "mtg_deck_count": mtg_count,
+        "rb_deck_count": rb_count,
+    }))
+    .into_response()
+}
+
+#[derive(Deserialize)]
+struct ChangePasswordBody {
+    old_password: String,
+    new_password: String,
+}
+
+async fn change_password(
+    State(pool): State<SqlitePool>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<ChangePasswordBody>,
+) -> impl IntoResponse {
+    let auth = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let username = match extract_username(auth) {
+        Ok(u) => u,
+        Err(_) => return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"msg": "Unauthorized"}))).into_response(),
+    };
+
+    if body.new_password.len() < 8 {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"msg": "New password must be at least 8 characters"}))).into_response();
+    }
+
+    let user = match db::users::find_by_username(&pool, &username).await {
+        Ok(Some(u)) => u,
+        _ => return (StatusCode::NOT_FOUND, Json(serde_json::json!({"msg": "User not found"}))).into_response(),
+    };
+
+    if !bcrypt::verify(&body.old_password, &user.password_hash).unwrap_or(false) {
+        return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"msg": "Current password is incorrect"}))).into_response();
+    }
+
+    let new_hash = match bcrypt::hash(&body.new_password, bcrypt::DEFAULT_COST) {
+        Ok(h) => h,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": e.to_string()}))).into_response(),
+    };
+
+    match db::users::update_password(&pool, &username, &new_hash).await {
+        Ok(_) => Json(serde_json::json!({"msg": "Password updated"})).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": e.to_string()}))).into_response(),
     }
 }

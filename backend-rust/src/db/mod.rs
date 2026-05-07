@@ -20,5 +20,10 @@ async fn migrate_columns(pool: &SqlitePool) -> anyhow::Result<()> {
     let _ = sqlx::query("ALTER TABLE rb_decks ADD COLUMN user_id TEXT")
         .execute(pool)
         .await;
+    let _ = sqlx::query(
+        "ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT (datetime('now'))",
+    )
+    .execute(pool)
+    .await;
     Ok(())
 }

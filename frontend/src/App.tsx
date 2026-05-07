@@ -13,6 +13,7 @@ import TestPage from "./pages/TestPage";
 import CardBrowserPage from "./pages/riftbound/CardBrowserPage";
 import DeckBuilderPage from "./pages/riftbound/DeckBuilderPage";
 import MyDecksPage from "./pages/MyDecksPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const App: React.FC = () => (
   <AuthProvider>
@@ -47,6 +48,14 @@ const App: React.FC = () => (
               element={
                 <ProtectedRoute>
                   <MyDecksPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               }
             />

@@ -36,9 +36,12 @@ const Nav: React.FC = () => {
         <div style={{ flex: 1 }} />
         {username ? (
           <div style={{ display: "flex", alignItems: "center", gap: "0.5em", padding: "0 1em" }}>
-            <span style={{ fontSize: 13, color: "#444" }}>
+            <Link
+              to="/profile"
+              style={{ fontSize: 13, color: "#444", textDecoration: "none" }}
+            >
               <span style={{ marginRight: "0.3em" }}>👤</span>{username}
-            </span>
+            </Link>
             <button
               onClick={handleLogout}
               style={{
