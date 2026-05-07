@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { fetchCards, Card } from "../api";
+import { T } from "../theme";
 
 interface FindCardFormProps {
   onCardsFound: (cards: Card[]) => void;
@@ -8,7 +9,7 @@ interface FindCardFormProps {
 const FindCardForm: React.FC<FindCardFormProps> = ({ onCardsFound }) => {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
 
   const handleShowCard = async () => {
     setLoading(true);
@@ -16,7 +17,7 @@ const FindCardForm: React.FC<FindCardFormProps> = ({ onCardsFound }) => {
     try {
       const data = await fetchCards({ name });
       onCardsFound(data);
-    } catch (err) {
+    } catch {
       setError("Error fetching cards");
       onCardsFound([]);
     } finally {
@@ -25,37 +26,34 @@ const FindCardForm: React.FC<FindCardFormProps> = ({ onCardsFound }) => {
   };
 
   return (
-    <div>
+    <div style={{ display: "flex", gap: "0.5em", alignItems: "center", flexWrap: "wrap", marginBottom: "0.75em" }}>
       <input
         type="text"
-        placeholder="Enter a name"
+        placeholder="Search by card name…"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        style={{ border: "1px solid black", padding: "0.5em" }}
+        onKeyDown={(e) => e.key === "Enter" && handleShowCard()}
+        style={{ minWidth: 220 }}
       />
       <button
         onClick={handleShowCard}
-        style={{
-          marginLeft: "0.5em",
-          border: "1px solid black",
-          padding: "0.5em",
-        }}
         disabled={loading}
+        style={{
+          padding: "0.5em 1.2em",
+          background: loading ? `${T.blue}44` : `${T.blue}CC`,
+          color: T.bg,
+          border: `1px solid ${T.blue}88`,
+          borderRadius: 4,
+          fontWeight: 700,
+          fontSize: "0.85em",
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+          cursor: loading ? "default" : "pointer",
+        }}
       >
-        {loading ? "Loading..." : "Show Card"}
+        {loading ? "Searching…" : "Search"}
       </button>
-      {error && (
-        <div
-          style={{
-            marginTop: "1em",
-            minHeight: "2em",
-            border: "1px solid black",
-            padding: "0.5em",
-          }}
-        >
-          <span style={{ color: "red" }}>{error}</span>
-        </div>
-      )}
+      {error && <span style={{ color: "#E74C3C", fontSize: 13 }}>{error}</span>}
     </div>
   );
 };

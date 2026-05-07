@@ -5,6 +5,7 @@ import StackVisualizer from "../components/visualStack";
 import DeckStats from "../components/DeckStats";
 import FormatSelection from "../components/FormatSelection";
 import { Card } from "../api";
+import { T } from "../theme";
 
 interface DeckEntry {
   card: Card;
@@ -17,113 +18,63 @@ const CreateDeckPage: React.FC = () => {
   const [deckDescription, setDeckDescription] = useState("");
   const [format, setFormat] = useState("commander");
   const [suggestions, setSuggestions] = useState<Card[]>([]);
-  const [commanderName, setCommanderName] = useState<string>("");
+  const [commanderName, setCommanderName] = useState("");
 
   const handleAddToDeck = (card: Card) => {
     setDeck((prev) => {
-      const idx = prev.findIndex((entry) => entry.card.name === card.name);
-      if (idx !== -1) {
-        // Card already in deck, increment count
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], count: updated[idx].count + 1 };
-        return updated;
-      } else {
-        // New card
-        return [...prev, { card, count: 1 }];
-      }
+      const idx = prev.findIndex((e) => e.card.name === card.name);
+      if (idx !== -1) { const u = [...prev]; u[idx] = { ...u[idx], count: u[idx].count + 1 }; return u; }
+      return [...prev, { card, count: 1 }];
     });
-  };
-
-  const handleAddCommander = (card: Card) => {
-    setCommanderName(card.name);
   };
 
   const handleRemoveCard = (name: string) => {
     setDeck((prev) => {
-      const idx = prev.findIndex((entry) => entry.card.name === name);
+      const idx = prev.findIndex((e) => e.card.name === name);
       if (idx !== -1) {
-        if (prev[idx].count > 1) {
-          // Decrement count
-          const updated = [...prev];
-          updated[idx] = { ...updated[idx], count: updated[idx].count - 1 };
-          return updated;
-        } else {
-          // Remove card
-          return prev.filter((entry) => entry.card.name !== name);
-        }
+        if (prev[idx].count > 1) { const u = [...prev]; u[idx] = { ...u[idx], count: u[idx].count - 1 }; return u; }
+        return prev.filter((e) => e.card.name !== name);
       }
       return prev;
     });
   };
 
-  const handleSaveDeck = async () => {
-    // Implement save logic here (e.g., call your backend API)
-    alert(
-      `Saving deck "${deckName}" with ${deck.reduce(
-        (sum, entry) => sum + entry.count,
-        0,
-      )} cards!`,
-    );
-  };
+  const allCards = deck.flatMap((e) => Array(e.count).fill(e.card));
+  const totalCount = deck.reduce((n, e) => n + e.count, 0);
 
   return (
     <div>
-      <h1>Create Deck</h1>
-      <div style={{ marginBottom: "1em" }}>
+      <h1 style={{ marginBottom: "1em" }}>Create Deck</h1>
+
+      {/* Deck metadata */}
+      <div style={{ display: "flex", gap: "0.75em", flexWrap: "wrap", alignItems: "center", marginBottom: "1em" }}>
         <FormatSelection value={format} onChange={setFormat} />
+        <input type="text" placeholder="Deck name…" value={deckName} onChange={(e) => setDeckName(e.target.value)} style={{ width: 200 }} />
+        <input type="text" placeholder="Description (optional)" value={deckDescription} onChange={(e) => setDeckDescription(e.target.value)} style={{ width: 240 }} />
       </div>
-      <div style={{ marginBottom: "1em" }}>
-        <input
-          type="text"
-          placeholder="Deck Name"
-          value={deckName}
-          onChange={(e) => setDeckName(e.target.value)}
-          style={{ marginRight: "1em" }}
-        />
-        <input
-          type="text"
-          placeholder="Deck Description"
-          value={deckDescription}
-          onChange={(e) => setDeckDescription(e.target.value)}
-        />
-      </div>
+
+      {/* Card search */}
       <FindCardForm onCardsFound={setSuggestions} />
-      <FoundCardsComponent
-        suggestions={suggestions}
-        onAddToDeck={handleAddToDeck}
-        format={format}
-        commanderName={commanderName}
-        onAddCommander={handleAddCommander}
-      />
-      <h2>Deck List</h2>
-      <ul>
-        {deck.map((entry) => (
-          <li key={entry.card.name}>
-            {entry.card.name} x{entry.count}
-            <button
-              style={{ marginLeft: "1em" }}
-              onClick={() => handleRemoveCard(entry.card.name)}
-            >
-              Remove
-            </button>
-          </li>
-        ))}
-      </ul>
-      <StackVisualizer
-        cards={deck.flatMap((entry) => Array(entry.count).fill(entry.card))}
-        format={format}
-        commanderName={commanderName}
-      />
-      <button
-        onClick={handleSaveDeck}
-        disabled={!deckName || deck.length === 0}
-        style={{ marginTop: "1em" }}
-      >
-        Save Deck
-      </button>
-      <DeckStats
-        cards={deck.flatMap((entry) => Array(entry.count).fill(entry.card))}
-      />
+      <FoundCardsComponent suggestions={suggestions} onAddToDeck={handleAddToDeck} format={format} commanderName={commanderName} onAddCommander={(card) => setCommanderName(card.name)} />
+
+      {/* Deck list */}
+      {deck.length > 0 && (
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, padding: "1em 1.2em", marginBottom: "1em" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.6em" }}>
+            Deck List ({totalCount} cards)
+          </div>
+          {deck.map((entry) => (
+            <div key={entry.card.name} style={{ display: "flex", alignItems: "center", gap: "0.5em", padding: "0.2em 0", fontSize: 13, borderBottom: `1px solid ${T.border}` }}>
+              <span style={{ flex: 1, color: T.textBright }}>{entry.card.name}</span>
+              <span style={{ color: T.gold, fontWeight: 700, minWidth: 28, textAlign: "right" }}>×{entry.count}</span>
+              <button onClick={() => handleRemoveCard(entry.card.name)} style={{ padding: "1px 7px", background: "none", border: `1px solid ${T.border}`, borderRadius: 3, color: T.textDim, cursor: "pointer", fontSize: 13 }}>−</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <DeckStats cards={allCards} />
+      <StackVisualizer cards={allCards} format={format} commanderName={commanderName} />
     </div>
   );
 };

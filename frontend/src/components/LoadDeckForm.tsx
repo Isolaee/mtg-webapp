@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { authHeaders } from "../api";
+import { T } from "../theme";
 
 interface LoadDeckFormProps {
   format: string;
@@ -14,282 +15,151 @@ interface LoadDeckFormProps {
   onDeckLoaded?: (deck: any) => void;
 }
 
-// DeckList component for showing all deck names and descriptions
-const DeckList: React.FC<{
-  onDeckSelect: (deckName: string) => void;
-}> = ({ onDeckSelect }) => {
-  const [decks, setDecks] = useState<
-    { deck_name: string; deck_description?: string }[]
-  >([]);
+const MTG_FORMATS = ["commander", "standard", "modern", "pioneer", "legacy", "vintage", "pauper"];
+
+const DeckList: React.FC<{ onDeckSelect: (name: string) => void }> = ({ onDeckSelect }) => {
+  const [decks, setDecks] = useState<{ deck_name: string; deck_description?: string; format: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDecks = async () => {
       setLoading(true);
-      setError(null);
       try {
-        const res = await fetch("http://localhost:8080/api/list_decks", {
-          headers: authHeaders(),
-        });
-        if (!res.ok) {
-          setError("Failed to fetch decks.");
-          setLoading(false);
-          return;
-        }
+        const res = await fetch("http://localhost:8080/api/list_decks", { headers: authHeaders() });
+        if (!res.ok) { setError("Failed to fetch decks."); return; }
         const data = await res.json();
-        setDecks(data.decks ? data.decks : []);
-      } catch {
-        setError("Network error.");
-      } finally {
-        setLoading(false);
-      }
+        setDecks(data.decks ?? []);
+      } catch { setError("Network error."); }
+      finally { setLoading(false); }
     };
     fetchDecks();
   }, []);
 
   return (
-    <div
-      style={{
-        border: "2px solid #1976d2",
-        borderRadius: "8px",
-        padding: "1em",
-        background: "#f0f7ff",
-        maxWidth: 250,
-        marginLeft: "2em",
-        height: "fit-content",
-      }}
-    >
-      <h3>Decks in Database</h3>
-      {loading && <div>Loading...</div>}
-      {error && <div style={{ color: "red" }}>{error}</div>}
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, padding: "1em", minWidth: 220, flex: "0 0 auto" }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.6em" }}>
+        Saved Decks
+      </div>
+      {loading && <div style={{ color: T.textDim, fontSize: 13 }}>Loading…</div>}
+      {error && <div style={{ color: "#E74C3C", fontSize: 13 }}>{error}</div>}
       {!loading && !error && (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        <div>
           {decks.map((deck) => (
-            <li
+            <button
               key={deck.deck_name}
-              style={{
-                padding: "0.5em 0",
-                borderBottom: "1px solid #ccc",
-                cursor: "pointer",
-              }}
               onClick={() => onDeckSelect(deck.deck_name)}
-              title={deck.deck_description || ""}
+              style={{ display: "block", width: "100%", textAlign: "left", padding: "0.4em 0.6em", marginBottom: "0.3em", background: "transparent", border: `1px solid ${T.border}`, borderRadius: 4, cursor: "pointer", color: T.textBright, fontSize: 13 }}
             >
-              <strong>{deck.deck_name}</strong>
-              {deck.deck_description && (
-                <div style={{ fontSize: "0.9em", color: "#555" }}>
-                  {deck.deck_description}
-                </div>
-              )}
-            </li>
+              <div style={{ fontWeight: 600 }}>{deck.deck_name}</div>
+              <div style={{ fontSize: 11, color: T.textDim, textTransform: "uppercase" }}>{deck.format}</div>
+            </button>
           ))}
-          {decks.length === 0 && <li>No decks found.</li>}
-        </ul>
+          {decks.length === 0 && <div style={{ color: T.textDim, fontSize: 13, fontStyle: "italic" }}>No decks saved yet.</div>}
+        </div>
       )}
     </div>
   );
 };
 
 const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
-  format,
-  setFormat,
-  commanderName,
-  setCommanderName,
-  deckName,
-  setDeckName,
-  deckDescription,
-  setDeckDescription,
-  onFileChange,
-  onDeckLoaded,
+  format, setFormat, commanderName, setCommanderName,
+  deckName, setDeckName, deckDescription, setDeckDescription,
+  onFileChange, onDeckLoaded,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Save deck handler
   const handleSaveDeck = async () => {
     setSaving(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
     const formData = new FormData();
     formData.append("deck_name", deckName);
     formData.append("deck_description", deckDescription);
     formData.append("format", format);
     formData.append("commander_name", commanderName);
-    if (
-      fileInputRef.current &&
-      fileInputRef.current.files &&
-      fileInputRef.current.files[0]
-    ) {
-      formData.append("deckfile", fileInputRef.current.files[0]);
-    }
+    if (fileInputRef.current?.files?.[0]) formData.append("deckfile", fileInputRef.current.files[0]);
     try {
-      const res = await fetch("http://localhost:8080/api/save_deck", {
-        method: "POST",
-        headers: authHeaders(),
-        body: formData,
-      });
-      if (!res.ok) {
-        setErrorMsg("Failed to save deck.");
-      } else {
-        alert("Deck saved!");
-      }
-    } catch {
-      setErrorMsg("Network error.");
-    } finally {
-      setSaving(false);
-    }
+      const res = await fetch("http://localhost:8080/api/save_deck", { method: "POST", headers: authHeaders(), body: formData });
+      if (!res.ok) { setErrorMsg("Failed to save deck."); }
+      else { setSuccessMsg("Deck saved!"); setTimeout(() => setSuccessMsg(null), 3000); }
+    } catch { setErrorMsg("Network error."); }
+    finally { setSaving(false); }
   };
 
-  // Load deck from DB handler
   const handleLoadFromDB = async (name?: string) => {
-    if (!name) {
-      name = prompt("Enter deck name to load from database:") || "";
-    }
+    if (!name) { name = prompt("Enter deck name to load:") || ""; }
     if (!name) return;
     setErrorMsg(null);
     try {
-      const res = await fetch(
-        `http://localhost:8080/api/load_deck?deck_name=${encodeURIComponent(name)}`,
-        { headers: authHeaders() },
-      );
-      if (!res.ok) {
-        setErrorMsg("Deck not found in database.");
-        return;
-      }
+      const res = await fetch(`http://localhost:8080/api/load_deck?deck_name=${encodeURIComponent(name)}`, { headers: authHeaders() });
+      if (!res.ok) { setErrorMsg("Deck not found."); return; }
       const deck = await res.json();
       setDeckName(deck.deck_name || "");
       setDeckDescription(deck.deck_description || "");
       setFormat(deck.format || "");
       setCommanderName(deck.commander_name || "");
       if (onDeckLoaded) onDeckLoaded(deck);
-      alert("Deck loaded from database!");
-    } catch {
-      setErrorMsg("Network error.");
-    }
+    } catch { setErrorMsg("Network error."); }
   };
 
+  const labelStyle: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.3em" };
+
   return (
-    <div style={{ display: "flex", alignItems: "flex-start" }}>
-      <div
-        style={{
-          border: "2px solid black",
-          borderRadius: "8px",
-          padding: "1.5em",
-          marginBottom: "2em",
-          background: "#fafafa",
-          maxWidth: 500,
-          flex: 1,
-        }}
-      >
-        {/* Format selection */}
-        <div style={{ marginBottom: "1em" }}>
-          <label>
-            Format:&nbsp;
-            <select value={format} onChange={(e) => setFormat(e.target.value)}>
-              <option value="commander">EDH</option>
-              <option value="Standard">Standard</option>
-              <option value="Modern">Modern</option>
-              <option value="Pioneer">Pioneer</option>
-            </select>
-          </label>
+    <div style={{ display: "flex", gap: "1.2em", alignItems: "flex-start", flexWrap: "wrap", marginBottom: "1.5em" }}>
+      {/* Form */}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, padding: "1.2em", flex: "1 1 340px", minWidth: 300 }}>
+        {/* Format */}
+        <div style={{ marginBottom: "0.9em" }}>
+          <label style={labelStyle}>Format</label>
+          <select value={format} onChange={(e) => setFormat(e.target.value)} style={{ width: "auto" }}>
+            {MTG_FORMATS.map((f) => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
+          </select>
         </div>
-        {/* Commander name input (only for EDH) */}
+
         {format === "commander" && (
-          <div style={{ marginBottom: "1em" }}>
-            <label>
-              Commander Name:&nbsp;
-              <input
-                type="text"
-                value={commanderName}
-                onChange={(e) => setCommanderName(e.target.value)}
-                placeholder="Enter commander name"
-              />
-            </label>
+          <div style={{ marginBottom: "0.9em" }}>
+            <label style={labelStyle}>Commander Name</label>
+            <input type="text" value={commanderName} onChange={(e) => setCommanderName(e.target.value)} placeholder="Enter commander name" />
           </div>
         )}
-        {/* Deck name input */}
-        <div style={{ marginBottom: "1em" }}>
-          <label>
-            Deck Name:&nbsp;
-            <input
-              type="text"
-              value={deckName}
-              onChange={(e) => setDeckName(e.target.value)}
-              placeholder="Enter deck name"
-            />
-          </label>
+
+        <div style={{ marginBottom: "0.9em" }}>
+          <label style={labelStyle}>Deck Name</label>
+          <input type="text" value={deckName} onChange={(e) => setDeckName(e.target.value)} placeholder="Enter deck name" />
         </div>
-        {/* Deck description input */}
+
         <div style={{ marginBottom: "1em" }}>
-          <label>
-            Deck Description:&nbsp;
-            <textarea
-              value={deckDescription}
-              onChange={(e) => setDeckDescription(e.target.value)}
-              placeholder="Enter deck description"
-              rows={4}
-              style={{ width: "100%", resize: "vertical" }}
-            />
-          </label>
+          <label style={labelStyle}>Description</label>
+          <textarea value={deckDescription} onChange={(e) => setDeckDescription(e.target.value)} placeholder="Optional description" rows={3} style={{ resize: "vertical" }} />
         </div>
-        {/* File input and Load from DB button */}
-        <div style={{ marginBottom: "1em", display: "flex", gap: "1em" }}>
-          <label
-            style={{
-              display: "inline-block",
-              padding: "0.5em 1em",
-              background: "#1976d2",
-              color: "#fff",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            Load Deck File
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".txt"
-              onChange={onFileChange}
-              style={{ display: "none" }}
-            />
+
+        {/* Actions row */}
+        <div style={{ display: "flex", gap: "0.6em", flexWrap: "wrap" }}>
+          <label style={{ padding: "0.45em 1em", background: `${T.blue}CC`, color: T.bg, border: `1px solid ${T.blue}88`, borderRadius: 4, fontWeight: 700, fontSize: "0.85em", letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>
+            Upload File
+            <input ref={fileInputRef} type="file" accept=".txt" onChange={onFileChange} style={{ display: "none" }} />
           </label>
+          <button onClick={() => handleLoadFromDB()} style={{ padding: "0.45em 1em", background: "transparent", color: T.gold, border: `1px solid ${T.gold}55`, borderRadius: 4, fontWeight: 600, fontSize: "0.85em", cursor: "pointer" }}>
+            Load from DB
+          </button>
           <button
-            type="button"
-            onClick={() => handleLoadFromDB()}
-            style={{
-              background: "#1976d2",
-              color: "#fff",
-              padding: "0.5em 1em",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            onClick={handleSaveDeck}
+            disabled={saving || !deckName}
+            style={{ padding: "0.45em 1em", background: saving || !deckName ? `${T.green}33` : `${T.green}CC`, color: T.textBright, border: `1px solid ${T.green}66`, borderRadius: 4, fontWeight: 700, fontSize: "0.85em", letterSpacing: "0.04em", textTransform: "uppercase", cursor: saving || !deckName ? "default" : "pointer" }}
           >
-            Load Deck from Database
+            {saving ? "Saving…" : "Save Deck"}
           </button>
         </div>
-        {/* Save button */}
-        <button
-          type="button"
-          onClick={handleSaveDeck}
-          disabled={saving}
-          style={{
-            background: "#388e3c",
-            color: "#fff",
-            padding: "0.5em 1.5em",
-            border: "none",
-            borderRadius: "4px",
-            cursor: saving ? "not-allowed" : "pointer",
-          }}
-        >
-          {saving ? "Saving..." : "Save"}
-        </button>
-        {errorMsg && (
-          <div style={{ color: "red", marginTop: "1em" }}>{errorMsg}</div>
-        )}
+
+        {errorMsg && <div style={{ color: "#E74C3C", fontSize: 13, marginTop: "0.75em" }}>{errorMsg}</div>}
+        {successMsg && <div style={{ color: T.green, fontSize: 13, marginTop: "0.75em" }}>{successMsg}</div>}
       </div>
-      {/* Deck list on the right */}
+
+      {/* Saved decks panel */}
       <DeckList onDeckSelect={handleLoadFromDB} />
     </div>
   );

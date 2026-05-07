@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import StackVisualizer from "../components/visualStack";
 import LoadDeckForm from "../components/LoadDeckForm";
 import DeckStats from "../components/DeckStats";
+import { T } from "../theme";
 
 interface Card {
   name: string;
@@ -18,42 +19,25 @@ const LoadDeckPage: React.FC = () => {
   const [deckDescription, setDeckDescription] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Handle file upload and parse deck
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    setErrorMsg(null); // Clear previous error
+    setErrorMsg(null);
     const file = e.target.files?.[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append("deckfile", file);
     formData.append("format", format);
     formData.append("deck_name", deckName);
     formData.append("deck_description", deckDescription);
-    if (format === "commander") {
-      formData.append("commander_name", commanderName);
-    }
-
+    if (format === "commander") formData.append("commander_name", commanderName);
     try {
-      const res = await fetch("http://localhost:8080/api/upload_deck", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        setErrorMsg(
-          err["msg, upload deck"] || err.msg || "Failed to upload deck file.",
-        );
-        return;
-      }
+      const res = await fetch("http://localhost:8080/api/upload_deck", { method: "POST", body: formData });
+      if (!res.ok) { const err = await res.json(); setErrorMsg(err.msg || "Failed to upload."); return; }
       const data = await res.json();
-      setDeck(data.cards); // Expecting backend to return { cards: [...] }
+      setDeck(data.cards);
       setSelectedCard(null);
-    } catch {
-      setErrorMsg("Network error.");
-    }
+    } catch { setErrorMsg("Network error."); }
   };
 
-  // Handle loading deck from database
   const handleDeckLoaded = (deckData: any) => {
     setDeck(deckData.cards || []);
     setFormat(deckData.format || "commander");
@@ -65,65 +49,63 @@ const LoadDeckPage: React.FC = () => {
 
   return (
     <div>
-      <h1>Load Deck</h1>
+      <h1 style={{ marginBottom: "1em" }}>Load Deck</h1>
+
       <LoadDeckForm
-        format={format}
-        setFormat={setFormat}
-        commanderName={commanderName}
-        setCommanderName={setCommanderName}
-        deckName={deckName}
-        setDeckName={setDeckName}
-        deckDescription={deckDescription}
-        setDeckDescription={setDeckDescription}
+        format={format} setFormat={setFormat}
+        commanderName={commanderName} setCommanderName={setCommanderName}
+        deckName={deckName} setDeckName={setDeckName}
+        deckDescription={deckDescription} setDeckDescription={setDeckDescription}
         onFileChange={handleFileChange}
         onDeckLoaded={handleDeckLoaded}
       />
-      {/* Deck view */}
-      <div style={{ marginBottom: "1em" }}>
-        <h2>Deck View</h2>
-        <StackVisualizer
-          cards={deck}
-          format={format}
-          commanderName={commanderName}
-        />
-        {/* DeckStats right below visual stack */}
-        <DeckStats cards={deck} />
-        <div style={{ marginTop: "1em" }}>
-          {deck.map((card, idx) => (
-            <button
-              key={idx}
-              style={{ margin: "0.25em" }}
-              onClick={() => setSelectedCard(card)}
-            >
-              {card.name}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {/* Card view */}
-      <div>
-        <h2>Card View</h2>
-        {selectedCard ? (
-          <div>
-            <h3>{selectedCard.name}</h3>
-            {selectedCard.image && (
-              <img
-                src={selectedCard.image}
-                alt={selectedCard.name}
-                style={{ maxWidth: 200, display: "block", marginBottom: "1em" }}
-              />
-            )}
-            <pre style={{ background: "#eee", padding: "1em" }}>
-              {JSON.stringify(selectedCard, null, 2)}
-            </pre>
+      {errorMsg && <div style={{ color: "#E74C3C", marginBottom: "1em", fontSize: 13 }}>{errorMsg}</div>}
+
+      {deck.length > 0 && (
+        <>
+          <DeckStats cards={deck} />
+          <StackVisualizer cards={deck} format={format} commanderName={commanderName} />
+
+          {/* Card list */}
+          <div style={{ marginTop: "1.5em" }}>
+            <h2 style={{ fontSize: "1.05em", marginBottom: "0.6em" }}>Card List ({deck.length})</h2>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4em" }}>
+              {deck.map((card, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedCard(card)}
+                  style={{
+                    padding: "0.25em 0.7em",
+                    fontSize: 12,
+                    background: selectedCard?.name === card.name ? `${T.blue}33` : T.surface,
+                    color: selectedCard?.name === card.name ? T.blue : T.text,
+                    border: `1px solid ${selectedCard?.name === card.name ? T.blue : T.border}`,
+                    borderRadius: 4,
+                    cursor: "pointer",
+                  }}
+                >
+                  {card.name}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div>Select a card to view details.</div>
-        )}
-      </div>
-      {/* Error message */}
-      {errorMsg && <div style={{ color: "red" }}>{errorMsg}</div>}
+
+          {/* Card detail */}
+          {selectedCard && (
+            <div style={{ marginTop: "1.5em", background: T.surface, border: `1px solid ${T.borderGold}44`, borderRadius: 6, padding: "1.2em 1.4em", display: "flex", gap: "1.5em", flexWrap: "wrap" }}>
+              {selectedCard.image && (
+                <img src={selectedCard.image} alt={selectedCard.name} style={{ width: 160, borderRadius: 8, border: `2px solid ${T.border}` }} />
+              )}
+              <div>
+                <h3 style={{ marginTop: 0, marginBottom: "0.5em" }}>{selectedCard.name}</h3>
+                {selectedCard.typeline && <div style={{ color: T.textDim, fontSize: 13, marginBottom: "0.4em" }}>{selectedCard.typeline}</div>}
+                {selectedCard.oracleText && <div style={{ color: T.text, fontSize: 13, lineHeight: 1.6, maxWidth: 340 }}>{selectedCard.oracleText}</div>}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
