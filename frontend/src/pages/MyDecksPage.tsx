@@ -91,7 +91,7 @@ const MyDecksPage: React.FC = () => {
           color={T.blue}
           emptyMsg="No MTG decks saved yet. Head to the deck builder to get started."
           onDelete={handleDeleteMtg}
-          onOpen={() => navigate("/deck-builder")}
+          onOpen={(name) => navigate(`/deck-builder?load=${encodeURIComponent(name)}`)}
         />
       )}
 
@@ -101,7 +101,7 @@ const MyDecksPage: React.FC = () => {
           color={T.purple}
           emptyMsg="No Riftbound decks saved yet. Head to the deck builder to get started."
           onDelete={handleDeleteRb}
-          onOpen={() => navigate("/riftbound/deck-builder")}
+          onOpen={(name) => navigate(`/riftbound/deck-builder?load=${encodeURIComponent(name)}`)}
         />
       )}
 
@@ -122,7 +122,7 @@ const DeckGrid: React.FC<{
   color: string;
   emptyMsg: string;
   onDelete: (name: string) => void;
-  onOpen: () => void;
+  onOpen: (name: string) => void;
 }> = ({ decks, color, emptyMsg, onDelete, onOpen }) => {
   if (decks.length === 0) {
     return <p style={{ color: T.textDim, fontStyle: "italic" }}>{emptyMsg}</p>;
@@ -155,7 +155,7 @@ const DeckGrid: React.FC<{
           )}
           <div style={{ display: "flex", gap: "0.5em", marginTop: "0.6em" }}>
             <button
-              onClick={onOpen}
+              onClick={() => onOpen(deck.name)}
               style={{
                 flex: 1,
                 padding: "0.35em 0",

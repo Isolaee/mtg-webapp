@@ -41,7 +41,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  if (loadError) return <p style={{ color: "#E74C3C" }}>{loadError}</p>;
+  if (loadError) return <p style={{ color: T.red }}>{loadError}</p>;
   if (!profile) return <p style={{ color: T.textDim }}>Loading…</p>;
 
   const joinedDate = profile.created_at
@@ -110,7 +110,7 @@ const ProfilePage: React.FC = () => {
             <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required autoComplete="new-password" />
           </Field>
 
-          {pwError && <div style={{ color: "#E74C3C", fontSize: 13, marginBottom: "0.75em" }}>{pwError}</div>}
+          {pwError && <div style={{ color: T.red, fontSize: 13, marginBottom: "0.75em" }}>{pwError}</div>}
           {pwSuccess && <div style={{ color: T.green, fontSize: 13, marginBottom: "0.75em" }}>Password updated successfully.</div>}
 
           <button

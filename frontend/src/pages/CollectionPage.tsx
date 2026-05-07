@@ -158,6 +158,7 @@ const CollectionPage: React.FC = () => {
 
         <div style={{ display: "flex", gap: "0.5em", marginBottom: "0.5em" }}>
           <input
+            type="text"
             value={searchName}
             onChange={(e) => {
               setSearchName(e.target.value);
@@ -165,16 +166,7 @@ const CollectionPage: React.FC = () => {
             }}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search card name…"
-            style={{
-              flex: 1,
-              padding: "0.45em 0.75em",
-              background: T.surface2,
-              border: `1px solid ${T.border}`,
-              borderRadius: 4,
-              color: T.textBright,
-              fontSize: 14,
-              outline: "none",
-            }}
+            style={{ flex: 1 }}
           />
           <button
             onClick={handleSearch}

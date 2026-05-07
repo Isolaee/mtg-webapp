@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { T } from "../theme";
 
-const API_URL = "http://localhost:8080/api";
+const API_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8080/api";
 
 const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -25,28 +26,23 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/${mode === "login" ? "login" : "register"}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.msg ?? "Something went wrong.");
-        return;
-      }
+      const endpoint = mode === "login" ? "login" : "register";
+      const { data } = await axios.post<{ access_token?: string; msg?: string }>(
+        `${API_URL}/${endpoint}`,
+        { username, password },
+      );
 
       if (mode === "register") {
         setSuccess("Account created! You can now log in.");
         setMode("login");
         setPassword("");
       } else {
-        login(data.access_token);
+        login(data.access_token!);
         navigate(from, { replace: true });
       }
-    } catch {
-      setError("Network error — is the server running?");
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err) ? err.response?.data?.msg : undefined;
+      setError(msg ?? "Network error — is the server running?");
     } finally {
       setLoading(false);
     }

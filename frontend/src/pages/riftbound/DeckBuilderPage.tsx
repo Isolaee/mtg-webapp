@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   fetchRbCards,
   fetchRbCard,
@@ -24,6 +25,7 @@ const OFFSET = 16;
 
 const DeckBuilderPage: React.FC = () => {
   const { username } = useAuth();
+  const [searchParams] = useSearchParams();
   const [searchName, setSearchName] = useState("");
   const [faction, setFaction] = useState("");
   const [cardType, setCardType] = useState("");
@@ -46,6 +48,30 @@ const DeckBuilderPage: React.FC = () => {
   const [loadOpen, setLoadOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const preload = searchParams.get("load");
+    if (!preload) return;
+    setLoading(true);
+    fetchRbDeck(preload)
+      .then(async (deck) => {
+        const idSet = new Set<string>();
+        if (deck.champion) idSet.add(deck.champion);
+        deck.main_deck?.forEach((e) => idSet.add(e.id));
+        deck.rune_deck?.forEach((e) => idSet.add(e.id));
+        deck.battlefields?.forEach((id) => idSet.add(id));
+        const cardResults = await Promise.allSettled([...idSet].map(fetchRbCard));
+        const cardMap = new Map<string, RbCard>();
+        cardResults.forEach((r) => { if (r.status === "fulfilled") cardMap.set(r.value.id, r.value); });
+        setDeckName(deck.name);
+        setChampion(deck.champion ? (cardMap.get(deck.champion) ?? null) : null);
+        setMainDeck((deck.main_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
+        setRuneDeck((deck.rune_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
+        setBattlefields((deck.battlefields ?? []).filter((id) => cardMap.has(id)).map((id) => cardMap.get(id)!));
+      })
+      .catch(() => setLoadError("Failed to load deck."))
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openLoadPanel = async () => {
     setLoadOpen(true);
@@ -168,7 +194,7 @@ const DeckBuilderPage: React.FC = () => {
           Save Deck
         </button>
         {saveMsg && (
-          <span style={{ fontSize: 13, color: saveMsg === "Deck saved!" ? T.green : "#E74C3C" }}>
+          <span style={{ fontSize: 13, color: saveMsg === "Deck saved!" ? T.green : T.red }}>
             {saveMsg}
           </span>
         )}
@@ -211,7 +237,7 @@ const DeckBuilderPage: React.FC = () => {
             {loading ? "Loading…" : "Load"}
           </button>
           {savedDecks.length === 0 && !loadError && <span style={{ color: T.textDim, fontSize: 13 }}>No saved decks yet.</span>}
-          {loadError && <span style={{ color: "#E74C3C", fontSize: 13 }}>{loadError}</span>}
+          {loadError && <span style={{ color: T.red, fontSize: 13 }}>{loadError}</span>}
         </div>
       )}
 

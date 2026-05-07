@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FindCardForm from "../../components/FindCard";
 import FoundCardsComponent from "../../components/FoundCardsComponent";
 import StackVisualizer from "../../components/visualStack";
 import DeckStats from "../../components/DeckStats";
 import FormatSelection from "../../components/FormatSelection";
+import { useSearchParams } from "react-router-dom";
 import {
   Card,
   MtgDeckSummary,
@@ -14,7 +15,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { T } from "../../theme";
 
-const API_BASE_URL = "http://localhost:8080/api";
+const API_BASE_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8080/api";
 
 interface DeckEntry {
   card: Card;
@@ -23,6 +24,7 @@ interface DeckEntry {
 
 const DeckBuilderPage: React.FC = () => {
   const { username } = useAuth();
+  const [searchParams] = useSearchParams();
   const [deck, setDeck] = useState<DeckEntry[]>([]);
   const [deckName, setDeckName] = useState("");
   const [deckDescription, setDeckDescription] = useState("");
@@ -36,6 +38,27 @@ const DeckBuilderPage: React.FC = () => {
   const [loadOpen, setLoadOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const preload = searchParams.get("load");
+    if (!preload) return;
+    setLoading(true);
+    fetchMtgDeck(preload)
+      .then((d) => {
+        setDeckName(d.name);
+        setDeckDescription(d.description ?? "");
+        setFormat(d.format);
+        setCommander(d.commander ?? null);
+        const entryMap = new Map<string, DeckEntry>();
+        for (const card of d.cards) {
+          const existing = entryMap.get(card.name);
+          entryMap.set(card.name, { card, count: (existing?.count ?? 0) + 1 });
+        }
+        setDeck([...entryMap.values()]);
+      })
+      .catch(() => setLoadError("Failed to load deck."))
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openLoadPanel = async () => {
     setLoadOpen(true);
@@ -201,7 +224,7 @@ const DeckBuilderPage: React.FC = () => {
           Save Deck
         </button>
         {saveMsg && (
-          <span style={{ fontSize: 13, color: saveMsg === "Deck saved!" ? T.green : "#E74C3C" }}>
+          <span style={{ fontSize: 13, color: saveMsg === "Deck saved!" ? T.green : T.red }}>
             {saveMsg}
           </span>
         )}
@@ -278,7 +301,7 @@ const DeckBuilderPage: React.FC = () => {
           {savedDecks.length === 0 && !loadError && (
             <span style={{ color: T.textDim, fontSize: 13 }}>No saved decks yet.</span>
           )}
-          {loadError && <span style={{ color: "#E74C3C", fontSize: 13 }}>{loadError}</span>}
+          {loadError && <span style={{ color: T.red, fontSize: 13 }}>{loadError}</span>}
         </div>
       )}
 

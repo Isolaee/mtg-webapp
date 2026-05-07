@@ -121,7 +121,7 @@ const CardBrowserPage: React.FC = () => {
         </button>
       </div>
 
-      {error && <div style={{ color: "#E74C3C", marginBottom: "0.75em" }}>{error}</div>}
+      {error && <div style={{ color: T.red, marginBottom: "0.75em" }}>{error}</div>}
 
       {searched && cards.length > 0 && (
         <div style={{ color: T.textDim, fontSize: "0.85em", marginBottom: "0.75em" }}>
