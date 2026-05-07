@@ -39,4 +39,5 @@ pub struct RbDeck {
     pub battlefields: Option<String>,
     pub description: Option<String>,
     pub created_at: Option<String>,
+    pub user_id: Option<String>,
 }

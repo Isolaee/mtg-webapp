@@ -2,6 +2,13 @@ import axios from "axios";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
+const STORAGE_KEY = "tcg_token";
+
+export function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem(STORAGE_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // ── MTG ──────────────────────────────────────────────────────────────────────
 
 export interface Card {
@@ -110,9 +117,20 @@ export interface RbDeckFull {
   created_at?: string;
 }
 
+export interface RbDeckSavePayload {
+  name: string;
+  format?: string;
+  champion?: string;
+  main_deck?: { id: string; count: number }[];
+  rune_deck?: { id: string; count: number }[];
+  battlefields?: string[];
+  description?: string;
+}
+
 export const fetchRbDeckList = async (): Promise<RbDeckSummary[]> => {
   const response = await axios.get<{ decks: RbDeckSummary[] }>(
     `${API_BASE_URL}/rb/decks`,
+    { headers: authHeaders() },
   );
   return response.data.decks;
 };
@@ -120,6 +138,22 @@ export const fetchRbDeckList = async (): Promise<RbDeckSummary[]> => {
 export const fetchRbDeck = async (name: string): Promise<RbDeckFull> => {
   const response = await axios.get<RbDeckFull>(
     `${API_BASE_URL}/rb/decks/${encodeURIComponent(name)}`,
+    { headers: authHeaders() },
   );
   return response.data;
+};
+
+export const saveRbDeck = async (
+  payload: RbDeckSavePayload,
+): Promise<void> => {
+  await axios.post(`${API_BASE_URL}/rb/decks`, payload, {
+    headers: authHeaders(),
+  });
+};
+
+export const deleteRbDeck = async (name: string): Promise<void> => {
+  await axios.delete(
+    `${API_BASE_URL}/rb/decks/${encodeURIComponent(name)}`,
+    { headers: authHeaders() },
+  );
 };

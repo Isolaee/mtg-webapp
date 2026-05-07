@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { authHeaders } from "../api";
 
 interface LoadDeckFormProps {
   format: string;
@@ -28,7 +29,9 @@ const DeckList: React.FC<{
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("http://localhost:8080/api/list_decks");
+        const res = await fetch("http://localhost:8080/api/list_decks", {
+          headers: authHeaders(),
+        });
         if (!res.ok) {
           setError("Failed to fetch decks.");
           setLoading(false);
@@ -123,6 +126,7 @@ const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
     try {
       const res = await fetch("http://localhost:8080/api/save_deck", {
         method: "POST",
+        headers: authHeaders(),
         body: formData,
       });
       if (!res.ok) {
@@ -146,9 +150,8 @@ const LoadDeckForm: React.FC<LoadDeckFormProps> = ({
     setErrorMsg(null);
     try {
       const res = await fetch(
-        `http://localhost:8080/api/load_deck?deck_name=${encodeURIComponent(
-          name,
-        )}`,
+        `http://localhost:8080/api/load_deck?deck_name=${encodeURIComponent(name)}`,
+        { headers: authHeaders() },
       );
       if (!res.ok) {
         setErrorMsg("Deck not found in database.");

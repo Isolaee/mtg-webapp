@@ -8,4 +8,5 @@ pub struct Deck {
     pub format: String,
     pub commander: Option<String>,
     pub cards: Option<String>,
+    pub user_id: Option<String>,
 }

@@ -4,6 +4,7 @@ import {
   fetchRbCard,
   fetchRbDeckList,
   fetchRbDeck,
+  saveRbDeck,
   RbCard,
   RbDeckSummary,
 } from "../../api";
@@ -15,7 +16,6 @@ const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
 const RARITIES = ["", "common", "uncommon", "rare", "epic", "showcase"];
 const SETS = ["", "OGN", "OGS", "SFD", "UNL"];
 
-const API_BASE = "http://localhost:8080/api";
 
 const DeckBuilderPage: React.FC = () => {
   // Search
@@ -155,22 +155,17 @@ const DeckBuilderPage: React.FC = () => {
   const saveDeck = async () => {
     if (!deckName.trim()) return;
     try {
-      const res = await fetch(`${API_BASE}/rb/decks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: deckName,
-          format: "standard",
-          champion: champion?.id ?? null,
-          main_deck: mainDeck.map((e) => ({ id: e.card.id, count: e.count })),
-          rune_deck: runeDeck.map((e) => ({ id: e.card.id, count: e.count })),
-          battlefields: battlefields.map((c) => c.id),
-        }),
+      await saveRbDeck({
+        name: deckName,
+        format: "standard",
+        champion: champion?.id ?? undefined,
+        main_deck: mainDeck.map((e) => ({ id: e.card.id, count: e.count })),
+        rune_deck: runeDeck.map((e) => ({ id: e.card.id, count: e.count })),
+        battlefields: battlefields.map((c) => c.id),
       });
-      const data = await res.json();
-      setSaveMsg(res.ok ? "Deck saved!" : data.error ?? "Save failed.");
+      setSaveMsg("Deck saved!");
     } catch {
-      setSaveMsg("Network error.");
+      setSaveMsg("Save failed.");
     }
     setTimeout(() => setSaveMsg(null), 3000);
   };

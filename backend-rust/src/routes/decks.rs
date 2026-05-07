@@ -1,7 +1,8 @@
 use crate::db;
+use crate::routes::auth::extract_username;
 use axum::{
     extract::{Multipart, Query, State},
-    http::StatusCode,
+    http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -11,6 +12,15 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::SqlitePool;
 use std::sync::OnceLock;
+
+fn require_auth(headers: &HeaderMap) -> Result<String, axum::response::Response> {
+    let auth = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    extract_username(auth)
+        .map_err(|_| (StatusCode::UNAUTHORIZED, Json(json!({"msg": "Unauthorized"}))).into_response())
+}
 
 static CARD_RE: OnceLock<Regex> = OnceLock::new();
 
@@ -27,8 +37,15 @@ pub fn router(pool: SqlitePool) -> Router {
         .with_state(pool)
 }
 
-async fn list_decks(State(pool): State<SqlitePool>) -> impl IntoResponse {
-    match db::decks::find_all(&pool).await {
+async fn list_decks(
+    State(pool): State<SqlitePool>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+    match db::decks::find_all_by_user(&pool, &user).await {
         Ok(decks) => {
             let summaries: Vec<_> = decks
                 .iter()
@@ -47,13 +64,18 @@ struct LoadDeckQuery {
 
 async fn load_deck(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     Query(params): Query<LoadDeckQuery>,
 ) -> impl IntoResponse {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
     let name = match &params.deck_name {
         Some(n) if !n.is_empty() => n.clone(),
         _ => return (StatusCode::BAD_REQUEST, Json(json!({"msg": "Missing deck_name parameter"}))).into_response(),
     };
-    match db::decks::find_by_name(&pool, &name).await {
+    match db::decks::find_by_name_and_user(&pool, &name, &user).await {
         Ok(Some(deck)) => Json(json!({
             "deck_name": deck.name,
             "deck_description": deck.description,
@@ -175,8 +197,14 @@ async fn upload_deck(
 
 async fn save_deck(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     multipart: Multipart,
 ) -> impl IntoResponse {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+
     let form = match parse_multipart(multipart).await {
         Ok(f) => f,
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"msg": e.to_string()}))).into_response(),
@@ -202,6 +230,7 @@ async fn save_deck(
         &form.format,
         commander_str.as_deref(),
         Some(&cards_str),
+        &user,
     )
     .await
     {

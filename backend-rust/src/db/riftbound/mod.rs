@@ -174,33 +174,60 @@ pub async fn upsert_card(pool: &SqlitePool, c: &RbCard) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn find_all_decks(pool: &SqlitePool) -> anyhow::Result<Vec<RbDeck>> {
+pub async fn find_all_decks_by_user(
+    pool: &SqlitePool,
+    user_id: &str,
+) -> anyhow::Result<Vec<RbDeck>> {
     Ok(sqlx::query_as::<_, RbDeck>(
         "SELECT id, name, format, champion, main_deck, rune_deck, battlefields,
-                description, created_at FROM rb_decks ORDER BY name",
+                description, created_at, user_id FROM rb_decks WHERE user_id = ? ORDER BY name",
     )
+    .bind(user_id)
     .fetch_all(pool)
     .await?)
 }
 
-pub async fn find_deck_by_name(pool: &SqlitePool, name: &str) -> anyhow::Result<Option<RbDeck>> {
+pub async fn find_deck_by_name_and_user(
+    pool: &SqlitePool,
+    name: &str,
+    user_id: &str,
+) -> anyhow::Result<Option<RbDeck>> {
     Ok(sqlx::query_as::<_, RbDeck>(
         "SELECT id, name, format, champion, main_deck, rune_deck, battlefields,
-                description, created_at FROM rb_decks WHERE name = ?",
+                description, created_at, user_id FROM rb_decks WHERE name = ? AND user_id = ?",
     )
     .bind(name)
+    .bind(user_id)
     .fetch_optional(pool)
     .await?)
 }
 
-pub async fn save_deck(pool: &SqlitePool, deck: &RbDeck) -> anyhow::Result<i64> {
-    let row = sqlx::query(
-        "INSERT INTO rb_decks (name, format, champion, main_deck, rune_deck, battlefields, description)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(name) DO UPDATE SET
-            format=excluded.format, champion=excluded.champion,
-            main_deck=excluded.main_deck, rune_deck=excluded.rune_deck,
-            battlefields=excluded.battlefields, description=excluded.description",
+pub async fn save_deck(pool: &SqlitePool, deck: &RbDeck, user_id: &str) -> anyhow::Result<i64> {
+    // Try update first; if nothing matched, insert.
+    let updated = sqlx::query(
+        "UPDATE rb_decks SET format=?, champion=?, main_deck=?, rune_deck=?,
+                              battlefields=?, description=?
+         WHERE name=? AND user_id=?",
+    )
+    .bind(&deck.format)
+    .bind(&deck.champion)
+    .bind(&deck.main_deck)
+    .bind(&deck.rune_deck)
+    .bind(&deck.battlefields)
+    .bind(&deck.description)
+    .bind(&deck.name)
+    .bind(user_id)
+    .execute(pool)
+    .await?
+    .rows_affected();
+
+    if updated > 0 {
+        return Ok(0);
+    }
+
+    let id = sqlx::query(
+        "INSERT INTO rb_decks (name, format, champion, main_deck, rune_deck, battlefields, description, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&deck.name)
     .bind(&deck.format)
@@ -209,15 +236,18 @@ pub async fn save_deck(pool: &SqlitePool, deck: &RbDeck) -> anyhow::Result<i64> 
     .bind(&deck.rune_deck)
     .bind(&deck.battlefields)
     .bind(&deck.description)
+    .bind(user_id)
     .execute(pool)
-    .await?;
+    .await?
+    .last_insert_rowid();
 
-    Ok(row.last_insert_rowid())
+    Ok(id)
 }
 
-pub async fn delete_deck(pool: &SqlitePool, name: &str) -> anyhow::Result<u64> {
-    let result = sqlx::query("DELETE FROM rb_decks WHERE name = ?")
+pub async fn delete_deck(pool: &SqlitePool, name: &str, user_id: &str) -> anyhow::Result<u64> {
+    let result = sqlx::query("DELETE FROM rb_decks WHERE name = ? AND user_id = ?")
         .bind(name)
+        .bind(user_id)
         .execute(pool)
         .await?;
 

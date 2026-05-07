@@ -1,8 +1,9 @@
 use crate::db::riftbound as db;
 use crate::models::riftbound::RbDeck;
+use crate::routes::auth::extract_username;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
     routing::get,
     Json, Router,
@@ -16,6 +17,15 @@ pub fn router(pool: SqlitePool) -> Router {
         .route("/rb/decks", get(list_decks).post(save_deck))
         .route("/rb/decks/:name", get(get_deck).delete(delete_deck))
         .with_state(pool)
+}
+
+fn require_auth(headers: &HeaderMap) -> Result<String, axum::response::Response> {
+    let auth = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    extract_username(auth)
+        .map_err(|_| (StatusCode::UNAUTHORIZED, Json(json!({"msg": "Unauthorized"}))).into_response())
 }
 
 #[derive(Deserialize)]
@@ -51,6 +61,7 @@ fn input_to_model(input: DeckInput) -> RbDeck {
             .map(|v| serde_json::to_string(&v).unwrap_or_default()),
         description: input.description,
         created_at: None,
+        user_id: None,
     }
 }
 
@@ -74,8 +85,15 @@ fn parse_json_field(s: &Option<String>) -> serde_json::Value {
         .unwrap_or(json!([]))
 }
 
-async fn list_decks(State(pool): State<SqlitePool>) -> impl IntoResponse {
-    match db::find_all_decks(&pool).await {
+async fn list_decks(
+    State(pool): State<SqlitePool>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+    match db::find_all_decks_by_user(&pool, &user).await {
         Ok(decks) => {
             let out: Vec<_> = decks
                 .iter()
@@ -93,9 +111,14 @@ async fn list_decks(State(pool): State<SqlitePool>) -> impl IntoResponse {
 
 async fn get_deck(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     Path(name): Path<String>,
 ) -> impl IntoResponse {
-    match db::find_deck_by_name(&pool, &name).await {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+    match db::find_deck_by_name_and_user(&pool, &name, &user).await {
         Ok(Some(deck)) => Json(deck_to_json(&deck)).into_response(),
         Ok(None) => (
             StatusCode::NOT_FOUND,
@@ -112,10 +135,15 @@ async fn get_deck(
 
 async fn save_deck(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     Json(input): Json<DeckInput>,
 ) -> impl IntoResponse {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
     let deck = input_to_model(input);
-    match db::save_deck(&pool, &deck).await {
+    match db::save_deck(&pool, &deck, &user).await {
         Ok(_) => (StatusCode::CREATED, Json(json!({"message": "Deck saved"}))).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -127,9 +155,14 @@ async fn save_deck(
 
 async fn delete_deck(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     Path(name): Path<String>,
 ) -> impl IntoResponse {
-    match db::delete_deck(&pool, &name).await {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+    match db::delete_deck(&pool, &name, &user).await {
         Ok(1..) => Json(json!({"message": "Deck deleted"})).into_response(),
         Ok(_) => (
             StatusCode::NOT_FOUND,
