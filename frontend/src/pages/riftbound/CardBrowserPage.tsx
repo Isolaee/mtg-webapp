@@ -7,17 +7,22 @@ const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
 const RARITIES = ["", "common", "uncommon", "rare", "epic", "showcase"];
 const SETS = ["", "OGN", "OGS", "SFD", "UNL"];
 
+const PREVIEW_W = 220;
+const PREVIEW_H = 308; // approximate at 220px wide (standard card ratio)
+
 const CardBrowserPage: React.FC = () => {
   const [cards, setCards] = useState<RbCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hovered, setHovered] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [faction, setFaction] = useState("");
   const [cardType, setCardType] = useState("");
   const [rarity, setRarity] = useState("");
   const [set, setSet] = useState("");
+
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
+  const [previewY, setPreviewY] = useState(0);
 
   const search = async () => {
     setLoading(true);
@@ -45,6 +50,8 @@ const CardBrowserPage: React.FC = () => {
     try { return card.keywords ? JSON.parse(card.keywords) : []; }
     catch { return []; }
   };
+
+  const previewTop = Math.max(10, Math.min(previewY - PREVIEW_H / 2, window.innerHeight - PREVIEW_H - 10));
 
   return (
     <div>
@@ -106,12 +113,9 @@ const CardBrowserPage: React.FC = () => {
 
       {/* Results list */}
       <div
-        style={{
-          background: T.surface,
-          border: `1px solid ${T.border}`,
-          borderRadius: 6,
-          overflow: "hidden",
-        }}
+        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, overflow: "hidden" }}
+        onMouseMove={(e) => setPreviewY(e.clientY)}
+        onMouseLeave={() => setPreview(null)}
       >
         {cards.map((card, i) => (
           <div
@@ -122,34 +126,14 @@ const CardBrowserPage: React.FC = () => {
               gap: "0.75em",
               padding: "0.55em 1em",
               borderBottom: i < cards.length - 1 ? `1px solid ${T.border}` : "none",
-              position: "relative",
+            }}
+            onMouseEnter={() => {
+              const src = card.image_medium ?? card.image;
+              src ? setPreview({ src, alt: card.name }) : setPreview(null);
             }}
           >
-            {/* Hover preview */}
-            <span
-              style={{ fontWeight: 600, color: T.textBright, cursor: "default", position: "relative", minWidth: 160 }}
-              onMouseEnter={() => setHovered(card.id)}
-              onMouseLeave={() => setHovered(null)}
-            >
+            <span style={{ fontWeight: 600, color: T.textBright, minWidth: 160 }}>
               {card.name}
-              {hovered === card.id && (card.image_medium || card.image) && (
-                <img
-                  src={card.image_medium ?? card.image}
-                  alt={card.name}
-                  style={{
-                    position: "absolute",
-                    left: "110%",
-                    top: 0,
-                    width: 220,
-                    height: "auto",
-                    border: `1px solid ${T.borderGold}`,
-                    background: T.surface,
-                    zIndex: 100,
-                    boxShadow: "0 4px 20px #00000099",
-                    borderRadius: 6,
-                  }}
-                />
-              )}
             </span>
 
             <CardBadge text={card.faction} color={factionColor(card.faction)} />
@@ -190,6 +174,26 @@ const CardBrowserPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Fixed card preview — always in viewport */}
+      {preview && (
+        <img
+          src={preview.src}
+          alt={preview.alt}
+          style={{
+            position: "fixed",
+            right: 24,
+            top: previewTop,
+            width: PREVIEW_W,
+            height: "auto",
+            borderRadius: 10,
+            border: `1px solid ${T.borderGold}`,
+            boxShadow: "0 8px 32px #00000099",
+            zIndex: 1000,
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </div>
   );
 };

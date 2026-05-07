@@ -13,16 +13,21 @@ const COLORS = [
   { value: "C", label: "Colorless" },
 ];
 
+const PREVIEW_W = 200;
+const PREVIEW_H = 280; // approximate at 200px wide
+
 const CardBrowserPage: React.FC = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
-  const [hovered, setHovered] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [cardType, setCardType] = useState("");
   const [color, setColor] = useState("");
+
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
+  const [previewY, setPreviewY] = useState(0);
 
   const search = async () => {
     if (!name.trim() && !cardType && !color) return;
@@ -48,7 +53,7 @@ const CardBrowserPage: React.FC = () => {
     if (e.key === "Enter") search();
   };
 
-  const colors = (card: Card): string[] => {
+  const parseColors = (card: Card): string[] => {
     try {
       const parsed = JSON.parse(card.colors ?? "[]");
       return Array.isArray(parsed) ? parsed : [];
@@ -56,6 +61,8 @@ const CardBrowserPage: React.FC = () => {
       return [];
     }
   };
+
+  const previewTop = Math.max(10, Math.min(previewY - PREVIEW_H / 2, window.innerHeight - PREVIEW_H - 10));
 
   return (
     <div>
@@ -83,35 +90,19 @@ const CardBrowserPage: React.FC = () => {
           onKeyDown={handleKeyDown}
           style={{ minWidth: 200, width: "auto" }}
         />
-        <select
-          value={cardType}
-          onChange={(e) => setCardType(e.target.value)}
-          aria-label="Type"
-          style={{ width: "auto" }}
-        >
+        <select value={cardType} onChange={(e) => setCardType(e.target.value)} aria-label="Type" style={{ width: "auto" }}>
           <option value="">All Types</option>
-          {TYPES.filter(Boolean).map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
+          {TYPES.filter(Boolean).map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          aria-label="Color"
-          style={{ width: "auto" }}
-        >
-          {COLORS.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
+        <select value={color} onChange={(e) => setColor(e.target.value)} aria-label="Color" style={{ width: "auto" }}>
+          {COLORS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
         <button
           onClick={search}
           disabled={loading || (!name.trim() && !cardType && !color)}
           style={{
             padding: "0.5em 1.4em",
-            background: loading || (!name.trim() && !cardType && !color)
-              ? `${T.blue}44`
-              : `${T.blue}CC`,
+            background: loading || (!name.trim() && !cardType && !color) ? `${T.blue}44` : `${T.blue}CC`,
             color: T.bg,
             border: `1px solid ${T.blue}`,
             borderRadius: 4,
@@ -137,12 +128,9 @@ const CardBrowserPage: React.FC = () => {
 
       {/* Results */}
       <div
-        style={{
-          background: T.surface,
-          border: `1px solid ${T.border}`,
-          borderRadius: 6,
-          overflow: "hidden",
-        }}
+        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, overflow: "hidden" }}
+        onMouseMove={(e) => setPreviewY(e.clientY)}
+        onMouseLeave={() => setPreview(null)}
       >
         {cards.map((card, i) => (
           <div
@@ -153,94 +141,36 @@ const CardBrowserPage: React.FC = () => {
               gap: "0.75em",
               padding: "0.55em 1em",
               borderBottom: i < cards.length - 1 ? `1px solid ${T.border}` : "none",
-              position: "relative",
             }}
+            onMouseEnter={() => card.image ? setPreview({ src: card.image, alt: card.name }) : setPreview(null)}
           >
-            {/* Name with hover preview */}
-            <span
-              style={{
-                fontWeight: 600,
-                color: T.textBright,
-                cursor: "default",
-                position: "relative",
-                minWidth: 200,
-                flex: "0 0 auto",
-              }}
-              onMouseEnter={() => setHovered(card.name + i)}
-              onMouseLeave={() => setHovered(null)}
-            >
+            <span style={{ fontWeight: 600, color: T.textBright, minWidth: 200, flex: "0 0 auto" }}>
               {card.name}
-              {hovered === card.name + i && card.image && (
-                <img
-                  src={card.image}
-                  alt={card.name}
-                  style={{
-                    position: "absolute",
-                    left: "110%",
-                    top: 0,
-                    width: 200,
-                    height: "auto",
-                    border: `1px solid ${T.borderGold}`,
-                    background: T.surface,
-                    zIndex: 100,
-                    boxShadow: "0 4px 20px #00000099",
-                    borderRadius: 8,
-                  }}
-                />
-              )}
             </span>
 
-            {/* Mana cost */}
             {card.manacost && (
-              <span
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: "0.78em",
-                  color: T.gold,
-                  whiteSpace: "nowrap",
-                  minWidth: 60,
-                }}
-              >
+              <span style={{ fontFamily: "monospace", fontSize: "0.78em", color: T.gold, whiteSpace: "nowrap", minWidth: 60 }}>
                 {card.manacost}
               </span>
             )}
 
-            {/* Color pips */}
             <span style={{ display: "flex", gap: "0.2em", minWidth: 60 }}>
-              {colors(card).map((c) => (
-                <ColorPip key={c} color={c} />
-              ))}
-              {colors(card).length === 0 && card.cardType !== "Land" && (
-                <ColorPip color="C" />
-              )}
+              {parseColors(card).map((c) => <ColorPip key={c} color={c} />)}
+              {parseColors(card).length === 0 && card.cardType !== "Land" && <ColorPip color="C" />}
             </span>
 
-            {/* Type */}
             {card.cardType && (
-              <span
-                style={{
-                  fontSize: "0.78em",
-                  padding: "0.15em 0.55em",
-                  borderRadius: 3,
-                  background: `${T.blue}22`,
-                  color: T.blue,
-                  border: `1px solid ${T.blue}44`,
-                  fontWeight: 600,
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <span style={{ fontSize: "0.78em", padding: "0.15em 0.55em", borderRadius: 3, background: `${T.blue}22`, color: T.blue, border: `1px solid ${T.blue}44`, fontWeight: 600, whiteSpace: "nowrap" }}>
                 {card.cardType}
               </span>
             )}
 
-            {/* Power / Toughness */}
             {card.power != null && card.toughness != null && (
               <span style={{ fontSize: "0.8em", color: T.text, whiteSpace: "nowrap" }}>
                 {card.power}/{card.toughness}
               </span>
             )}
 
-            {/* CMC */}
             {card.cmc != null && card.cmc > 0 && (
               <span style={{ fontSize: "0.78em", color: T.textDim, whiteSpace: "nowrap" }}>
                 CMC {card.cmc}
@@ -261,6 +191,26 @@ const CardBrowserPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Fixed card preview — always in viewport */}
+      {preview && (
+        <img
+          src={preview.src}
+          alt={preview.alt}
+          style={{
+            position: "fixed",
+            right: 24,
+            top: previewTop,
+            width: PREVIEW_W,
+            height: "auto",
+            borderRadius: 10,
+            border: `1px solid ${T.borderGold}`,
+            boxShadow: "0 8px 32px #00000099",
+            zIndex: 1000,
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </div>
   );
 };
