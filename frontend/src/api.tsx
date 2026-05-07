@@ -90,3 +90,36 @@ export const fetchRbCard = async (id: string): Promise<RbCard> => {
   const response = await axios.get<RbCard>(`${API_BASE_URL}/rb/cards/${id}`);
   return response.data;
 };
+
+export interface RbDeckSummary {
+  id: number;
+  name: string;
+  format: string;
+  description?: string;
+}
+
+export interface RbDeckFull {
+  id: number;
+  name: string;
+  format: string;
+  champion?: string;
+  main_deck?: { id: string; count: number }[];
+  rune_deck?: { id: string; count: number }[];
+  battlefields?: string[];
+  description?: string;
+  created_at?: string;
+}
+
+export const fetchRbDeckList = async (): Promise<RbDeckSummary[]> => {
+  const response = await axios.get<{ decks: RbDeckSummary[] }>(
+    `${API_BASE_URL}/rb/decks`,
+  );
+  return response.data.decks;
+};
+
+export const fetchRbDeck = async (name: string): Promise<RbDeckFull> => {
+  const response = await axios.get<RbDeckFull>(
+    `${API_BASE_URL}/rb/decks/${encodeURIComponent(name)}`,
+  );
+  return response.data;
+};

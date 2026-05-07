@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { fetchRbCards, RbCard } from "../../api";
+import {
+  fetchRbCards,
+  fetchRbCard,
+  fetchRbDeckList,
+  fetchRbDeck,
+  RbCard,
+  RbDeckSummary,
+} from "../../api";
 import RbVisualStack, { DeckEntry } from "../../components/riftbound/RbVisualStack";
 
 const FACTIONS = ["", "body", "calm", "chaos", "colorless", "fury", "mind", "order"];
@@ -28,6 +35,73 @@ const DeckBuilderPage: React.FC = () => {
   const [battlefields, setBattlefields] = useState<RbCard[]>([]);
 
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Load deck state
+  const [savedDecks, setSavedDecks] = useState<RbDeckSummary[]>([]);
+  const [selectedDeck, setSelectedDeck] = useState("");
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const openLoadPanel = async () => {
+    setLoadOpen(true);
+    setLoadError(null);
+    try {
+      setSavedDecks(await fetchRbDeckList());
+    } catch {
+      setLoadError("Could not fetch saved decks.");
+    }
+  };
+
+  const loadDeck = async () => {
+    if (!selectedDeck) return;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const deck = await fetchRbDeck(selectedDeck);
+
+      // Collect all unique card IDs so we can fetch them in one pass
+      const idSet = new Set<string>();
+      if (deck.champion) idSet.add(deck.champion);
+      deck.main_deck?.forEach((e) => idSet.add(e.id));
+      deck.rune_deck?.forEach((e) => idSet.add(e.id));
+      deck.battlefields?.forEach((id) => idSet.add(id));
+
+      // Fetch all cards in parallel, skip any that 404
+      const cardResults = await Promise.allSettled(
+        [...idSet].map((id) => fetchRbCard(id)),
+      );
+      const cardMap = new Map<string, RbCard>();
+      cardResults.forEach((r) => {
+        if (r.status === "fulfilled") cardMap.set(r.value.id, r.value);
+      });
+
+      // Reconstruct deck state
+      setDeckName(deck.name);
+      setChampion(deck.champion ? (cardMap.get(deck.champion) ?? null) : null);
+      setMainDeck(
+        (deck.main_deck ?? [])
+          .filter((e) => cardMap.has(e.id))
+          .map((e) => ({ card: cardMap.get(e.id)!, count: e.count })),
+      );
+      setRuneDeck(
+        (deck.rune_deck ?? [])
+          .filter((e) => cardMap.has(e.id))
+          .map((e) => ({ card: cardMap.get(e.id)!, count: e.count })),
+      );
+      setBattlefields(
+        (deck.battlefields ?? [])
+          .filter((id) => cardMap.has(id))
+          .map((id) => cardMap.get(id)!),
+      );
+      setLoadOpen(false);
+      setSelectedDeck("");
+    } catch {
+      setLoadError("Failed to load deck.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const search = async () => {
     setSearching(true);
@@ -136,7 +210,70 @@ const DeckBuilderPage: React.FC = () => {
             {saveMsg}
           </span>
         )}
+        <button
+          onClick={loadOpen ? () => setLoadOpen(false) : openLoadPanel}
+          style={{
+            marginLeft: "0.75em",
+            padding: "0.4em 1em",
+            background: "#eee",
+            border: "1px solid #ccc",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          {loadOpen ? "Cancel" : "Load Deck"}
+        </button>
       </div>
+
+      {/* Load deck panel */}
+      {loadOpen && (
+        <div
+          style={{
+            marginBottom: "1em",
+            padding: "0.75em 1em",
+            border: "1px solid #ddd",
+            borderRadius: 6,
+            background: "#fafafa",
+            display: "flex",
+            gap: "0.5em",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <select
+            value={selectedDeck}
+            onChange={(e) => setSelectedDeck(e.target.value)}
+            style={{ padding: "0.4em 0.5em", border: "1px solid #ccc", borderRadius: 4, minWidth: 200 }}
+          >
+            <option value="">— select a deck —</option>
+            {savedDecks.map((d) => (
+              <option key={d.id} value={d.name}>
+                {d.name} ({d.format})
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={loadDeck}
+            disabled={!selectedDeck || loading}
+            style={{
+              padding: "0.4em 1em",
+              background: "#6d2a8c",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              cursor: selectedDeck && !loading ? "pointer" : "default",
+              fontWeight: 600,
+            }}
+          >
+            {loading ? "Loading…" : "Load"}
+          </button>
+          {savedDecks.length === 0 && !loadError && (
+            <span style={{ color: "#aaa", fontSize: 13 }}>No saved decks yet.</span>
+          )}
+          {loadError && <span style={{ color: "red", fontSize: 13 }}>{loadError}</span>}
+        </div>
+      )}
 
       {/* Search */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5em", marginBottom: "0.75em", alignItems: "center" }}>
