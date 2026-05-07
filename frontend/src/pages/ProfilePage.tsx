@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
-import { fetchProfile, changePassword, activatePremium, UserProfile } from "../api";
+import { fetchProfile, changePassword, UserProfile } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useIAP } from "../hooks/useIAP";
 import { T, panel, btn } from "../theme";
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { isPremium, refreshPremium } = useAuth();
+  const { isPremium } = useAuth();
+  const iap = useIAP();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const [purchasing, setPurchasing] = useState(false);
 
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -25,23 +25,6 @@ const ProfilePage: React.FC = () => {
       .then(setProfile)
       .catch(() => setLoadError("Could not load profile."));
   }, []);
-
-  const handlePurchasePremium = async () => {
-    setPurchaseError(null);
-    setPurchasing(true);
-    try {
-      // TODO: install an IAP plugin (e.g. @capgo/capacitor-purchases or cordova-plugin-purchase)
-      // and replace the line below with a real purchase call for product "remove_ads".
-      // After a confirmed purchase, call activatePremium with the purchase token.
-      // Example: const { purchaseToken } = await YourIAPPlugin.purchase({ productId: "remove_ads" });
-      await activatePremium("pending");
-      refreshPremium();
-    } catch {
-      setPurchaseError("Purchase failed. Please try again.");
-    } finally {
-      setPurchasing(false);
-    }
-  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,14 +111,32 @@ const ProfilePage: React.FC = () => {
           <p style={{ color: T.textDim, fontSize: 13, marginBottom: "1em" }}>
             One-time purchase to remove all ads permanently and support development.
           </p>
-          {purchaseError && <div style={{ color: T.red, fontSize: 13, marginBottom: "0.75em" }}>{purchaseError}</div>}
-          <button
-            onClick={handlePurchasePremium}
-            disabled={purchasing}
-            style={{ ...btn.primary(T.gold), opacity: purchasing ? 0.6 : 1 }}
-          >
-            {purchasing ? "Processing…" : "Upgrade — Remove Ads"}
-          </button>
+          {iap.error && (
+            <div style={{ color: T.red, fontSize: 13, marginBottom: "0.75em" }}>
+              {iap.error}{" "}
+              <button onClick={iap.clearError} style={{ background: "none", border: "none", color: T.textDim, cursor: "pointer", fontSize: 12 }}>✕</button>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: "0.75em", flexWrap: "wrap" }}>
+            <button
+              onClick={iap.purchase}
+              disabled={iap.purchasing || !iap.ready}
+              style={{ ...btn.primary(T.gold), opacity: (iap.purchasing || !iap.ready) ? 0.6 : 1 }}
+            >
+              {iap.purchasing
+                ? "Processing…"
+                : iap.price
+                ? `Upgrade — Remove Ads (${iap.price})`
+                : "Upgrade — Remove Ads"}
+            </button>
+            <button
+              onClick={iap.restore}
+              disabled={iap.restoring}
+              style={{ ...btn.primary(T.gold), opacity: iap.restoring ? 0.6 : 1, background: "transparent", color: T.textDim, border: `1px solid ${T.border}` }}
+            >
+              {iap.restoring ? "Restoring…" : "Restore Purchase"}
+            </button>
+          </div>
         </div>
       ) : null}
 
