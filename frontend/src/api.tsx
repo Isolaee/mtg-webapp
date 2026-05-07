@@ -47,6 +47,27 @@ export const createDeck = async (deckData: Partial<Deck>): Promise<Deck> => {
   return response.data;
 };
 
+export interface MtgDeckSummary {
+  deck_name: string;
+  deck_description?: string;
+  format: string;
+}
+
+export const fetchMtgDeckList = async (): Promise<MtgDeckSummary[]> => {
+  const response = await axios.get<{ decks: MtgDeckSummary[] }>(
+    `${API_BASE_URL}/list_decks`,
+    { headers: authHeaders() },
+  );
+  return response.data.decks;
+};
+
+export const deleteMtgDeck = async (name: string): Promise<void> => {
+  await axios.delete(
+    `${API_BASE_URL}/decks/${encodeURIComponent(name)}`,
+    { headers: authHeaders() },
+  );
+};
+
 // ── Riftbound ────────────────────────────────────────────────────────────────
 
 export interface RbCard {

@@ -6,11 +6,13 @@ const MTG_LINKS = [
   { to: "/", label: "Home" },
   { to: "/create-deck", label: "Create Deck" },
   { to: "/load-deck", label: "Load Deck" },
+  { to: "/my-decks", label: "My Decks" },
 ];
 
 const RB_LINKS = [
   { to: "/riftbound", label: "Cards" },
   { to: "/riftbound/deck-builder", label: "Deck Builder" },
+  { to: "/my-decks", label: "My Decks" },
 ];
 
 const Nav: React.FC = () => {

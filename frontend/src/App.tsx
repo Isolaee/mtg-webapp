@@ -12,6 +12,7 @@ import LoadDeckPage from "./pages/LoadDeckPage";
 import TestPage from "./pages/TestPage";
 import CardBrowserPage from "./pages/riftbound/CardBrowserPage";
 import DeckBuilderPage from "./pages/riftbound/DeckBuilderPage";
+import MyDecksPage from "./pages/MyDecksPage";
 
 const App: React.FC = () => (
   <AuthProvider>
@@ -41,6 +42,14 @@ const App: React.FC = () => (
               }
             />
             <Route path="/test" element={<TestPage />} />
+            <Route
+              path="/my-decks"
+              element={
+                <ProtectedRoute>
+                  <MyDecksPage />
+                </ProtectedRoute>
+              }
+            />
             {/* Riftbound */}
             <Route path="/riftbound" element={<CardBrowserPage />} />
             <Route

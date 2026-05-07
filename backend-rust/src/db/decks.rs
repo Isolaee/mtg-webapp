@@ -32,6 +32,19 @@ pub async fn find_by_name_and_user(
     .await?)
 }
 
+pub async fn delete_by_name_and_user(
+    pool: &SqlitePool,
+    name: &str,
+    user_id: &str,
+) -> anyhow::Result<u64> {
+    Ok(sqlx::query("DELETE FROM decks WHERE name = ? AND user_id = ?")
+        .bind(name)
+        .bind(user_id)
+        .execute(pool)
+        .await?
+        .rows_affected())
+}
+
 pub async fn insert(
     pool: &SqlitePool,
     name: &str,

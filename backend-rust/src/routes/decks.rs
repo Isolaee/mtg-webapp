@@ -1,10 +1,10 @@
 use crate::db;
 use crate::routes::auth::extract_username;
 use axum::{
-    extract::{Multipart, Query, State},
+    extract::{Multipart, Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use regex::Regex;
@@ -34,6 +34,7 @@ pub fn router(pool: SqlitePool) -> Router {
         .route("/load_deck", get(load_deck))
         .route("/save_deck", post(save_deck))
         .route("/upload_deck", post(upload_deck))
+        .route("/decks/:name", delete(delete_deck))
         .with_state(pool)
 }
 
@@ -49,7 +50,7 @@ async fn list_decks(
         Ok(decks) => {
             let summaries: Vec<_> = decks
                 .iter()
-                .map(|d| json!({"deck_name": d.name, "deck_description": d.description}))
+                .map(|d| json!({"deck_name": d.name, "deck_description": d.description, "format": d.format}))
                 .collect();
             Json(json!({"decks": summaries})).into_response()
         }
@@ -235,6 +236,22 @@ async fn save_deck(
     .await
     {
         Ok(_) => Json(json!({"msg": "Deck saved successfully!"})).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response(),
+    }
+}
+
+async fn delete_deck(
+    State(pool): State<SqlitePool>,
+    headers: HeaderMap,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    let user = match require_auth(&headers) {
+        Ok(u) => u,
+        Err(r) => return r,
+    };
+    match db::decks::delete_by_name_and_user(&pool, &name, &user).await {
+        Ok(1..) => Json(json!({"msg": "Deck deleted"})).into_response(),
+        Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Deck not found"}))).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response(),
     }
 }
