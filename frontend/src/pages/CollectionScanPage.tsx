@@ -1,172 +1,266 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { T, btn, panel } from "../theme";
 import { ScanMatch, scanCard, addToCollection } from "../api";
 
-type Stage = "idle" | "scanning" | "results";
+const SCAN_INTERVAL_MS = 1800;
 
 const CollectionScanPage: React.FC = () => {
   const navigate = useNavigate();
-  const [stage, setStage] = useState<Stage>("idle");
-  const [preview, setPreview] = useState<string | null>(null);
+
+  // Camera
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const busyRef = useRef(false); // prevents overlapping scan requests
+
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  // Results
   const [matches, setMatches] = useState<ScanMatch[]>([]);
   const [picked, setPicked] = useState<ScanMatch | null>(null);
+  const [manuallyPicked, setManuallyPicked] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [isFoil, setIsFoil] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
 
-  const handleCapture = async () => {
-    setError(null);
-    setMatches([]);
-    setPicked(null);
-    setStage("scanning");
+  const stopCamera = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+  }, []);
+
+  const captureAndScan = useCallback(async () => {
+    if (busyRef.current) return;
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0) return;
+
+    busyRef.current = true;
+    setScanning(true);
     try {
-      const photo = await Camera.getPhoto({
-        source: CameraSource.Camera,
-        resultType: CameraResultType.Base64,
-        quality: 80,
-        width: 800,
-      });
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d")!.drawImage(video, 0, 0);
+      const base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
 
-      if (!photo.base64String) {
-        setError("No image data returned from camera.");
-        setStage("idle");
-        return;
+      const results = await scanCard(base64);
+      if (results.length > 0) {
+        setMatches(results);
+        // Auto-select top result only if user hasn't manually chosen one
+        if (!manuallyPicked) setPicked(results[0]);
       }
-
-      setPreview(`data:image/jpeg;base64,${photo.base64String}`);
-
-      const results = await scanCard(photo.base64String);
-      setMatches(results);
-      setPicked(results[0] ?? null);
-      setStage("results");
-    } catch (e: unknown) {
-      // User cancelled the camera — treat silently; any real error shown
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!msg.toLowerCase().includes("cancel") && !msg.toLowerCase().includes("dismiss")) {
-        setError("Scan failed: " + msg);
-      }
-      setStage("idle");
+    } catch {
+      // silently ignore individual scan failures
+    } finally {
+      busyRef.current = false;
+      setScanning(false);
     }
+  }, [manuallyPicked]);
+
+  // Restart interval whenever captureAndScan reference changes (manuallyPicked toggle)
+  useEffect(() => {
+    if (!cameraReady) return;
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(captureAndScan, SCAN_INTERVAL_MS);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [captureAndScan, cameraReady]);
+
+  // Start camera stream on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        setCameraReady(true);
+      } catch {
+        if (!cancelled) setCameraError("Camera access denied — check app permissions.");
+      }
+    })();
+    return () => { cancelled = true; stopCamera(); };
+  }, [stopCamera]);
+
+  const handlePick = (m: ScanMatch) => {
+    setPicked(m);
+    setManuallyPicked(true);
   };
 
   const handleAdd = async () => {
     if (!picked) return;
     setIsAdding(true);
+    setAddError(null);
     try {
       await addToCollection({ game: picked.game, card_id: picked.card_id, is_foil: isFoil });
+      stopCamera();
       navigate("/collection");
-    } catch (e: unknown) {
-      setError("Could not add card: " + (e instanceof Error ? e.message : String(e)));
+    } catch {
+      setAddError("Could not add card — try again.");
     } finally {
       setIsAdding(false);
     }
   };
 
+  const handleRescan = () => {
+    setMatches([]);
+    setPicked(null);
+    setManuallyPicked(false);
+    setAddError(null);
+  };
+
   const confidenceLabel = (d: number) => {
-    if (d <= 8) return { text: "Strong match", color: T.green };
-    if (d <= 18) return { text: "Possible match", color: T.gold };
-    return { text: "Weak match", color: T.textDim };
+    if (d <= 8) return { text: "Strong", color: T.green };
+    if (d <= 18) return { text: "Possible", color: T.gold };
+    return { text: "Weak", color: T.textDim };
   };
 
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.8em", marginBottom: "1.4em" }}>
+    <div style={{ maxWidth: 520, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.8em", marginBottom: "1.2em" }}>
         <button
-          onClick={() => navigate("/collection")}
+          onClick={() => { stopCamera(); navigate("/collection"); }}
           style={{ ...btn.ghost(), padding: "0.3em 0.8em", fontSize: "0.8em" }}
         >
           ← Back
         </button>
         <h1 style={{ margin: 0, fontSize: "1.4em" }}>Scan Card</h1>
+        {scanning && (
+          <span style={{ marginLeft: "auto", fontSize: 12, color: T.textDim, letterSpacing: "0.04em" }}>
+            scanning…
+          </span>
+        )}
       </div>
 
-      {/* Camera button */}
-      {(stage === "idle" || stage === "scanning") && (
-        <div style={{ ...panel, textAlign: "center", padding: "2em 1.6em" }}>
-          {preview ? (
-            <img
-              src={preview}
-              alt="Captured card"
-              style={{ maxWidth: "100%", borderRadius: 6, marginBottom: "1.2em" }}
-            />
-          ) : (
+      {/* Viewfinder */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          borderRadius: 8,
+          overflow: "hidden",
+          background: T.surface2,
+          border: `1px solid ${T.border}`,
+          marginBottom: "1em",
+          aspectRatio: "4/3",
+        }}
+      >
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+
+        {/* Corner guide lines */}
+        {cameraReady && !cameraError && (
+          <>
+            {[
+              { top: 12, left: 12, borderTop: `2px solid ${T.gold}`, borderLeft: `2px solid ${T.gold}` },
+              { top: 12, right: 12, borderTop: `2px solid ${T.gold}`, borderRight: `2px solid ${T.gold}` },
+              { bottom: 12, left: 12, borderBottom: `2px solid ${T.gold}`, borderLeft: `2px solid ${T.gold}` },
+              { bottom: 12, right: 12, borderBottom: `2px solid ${T.gold}`, borderRight: `2px solid ${T.gold}` },
+            ].map((s, i) => (
+              <div
+                key={i}
+                style={{ position: "absolute", width: 24, height: 24, ...s }}
+              />
+            ))}
             <div
               style={{
-                width: "100%",
-                paddingTop: "56%",
-                background: T.surface2,
-                borderRadius: 6,
-                border: `2px dashed ${T.border}`,
-                marginBottom: "1.2em",
-                position: "relative",
+                position: "absolute",
+                bottom: 10,
+                left: 0,
+                right: 0,
+                textAlign: "center",
+                fontSize: 12,
+                color: `${T.goldLight}BB`,
+                letterSpacing: "0.04em",
+                textShadow: "0 1px 4px #000",
               }}
             >
-              <span
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: T.textDim,
-                  fontSize: 13,
-                }}
-              >
-                Point camera at a card
-              </span>
+              Centre the card art in the frame
             </div>
-          )}
+          </>
+        )}
 
-          <button
-            onClick={handleCapture}
-            disabled={stage === "scanning"}
-            style={{ ...btn.primary(T.blue), fontSize: "1em", padding: "0.6em 2em" }}
+        {!cameraReady && !cameraError && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: T.textDim,
+              fontSize: 13,
+            }}
           >
-            {stage === "scanning" ? "Scanning…" : "Take Photo"}
-          </button>
-        </div>
-      )}
+            Starting camera…
+          </div>
+        )}
 
-      {error && (
-        <p style={{ color: T.red, fontSize: 13, marginTop: "0.8em" }}>{error}</p>
-      )}
+        {cameraError && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5em",
+              color: T.red,
+              fontSize: 13,
+              padding: "1em",
+              textAlign: "center",
+            }}
+          >
+            <span>{cameraError}</span>
+          </div>
+        )}
+      </div>
 
-      {/* Match results */}
-      {stage === "results" && matches.length > 0 && (
+      {/* Match list */}
+      {matches.length > 0 && (
         <>
-          <p style={{ color: T.textDim, fontSize: 13, marginBottom: "0.8em" }}>
-            Select the correct card:
+          <p style={{ color: T.textDim, fontSize: 12, marginBottom: "0.5em", letterSpacing: "0.03em" }}>
+            {manuallyPicked ? "Your selection:" : "Best matches — tap to select:"}
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.6em", marginBottom: "1.4em" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5em", marginBottom: "1em" }}>
             {matches.map((m) => {
               const conf = confidenceLabel(m.distance);
               const isSelected = picked?.card_id === m.card_id && picked?.game === m.game;
-              const color = m.game === "mtg" ? T.blue : T.purple;
+              const accent = m.game === "mtg" ? T.blue : T.purple;
               return (
                 <div
                   key={`${m.game}-${m.card_id}`}
-                  onClick={() => setPicked(m)}
+                  onClick={() => handlePick(m)}
                   style={{
-                    ...panel,
-                    padding: "0.8em 1em",
-                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.9em",
-                    border: isSelected
-                      ? `2px solid ${color}`
-                      : `1px solid ${T.border}`,
-                    transition: "border 0.1s",
+                    gap: "0.8em",
+                    padding: "0.65em 0.9em",
+                    background: T.surface,
+                    border: isSelected ? `2px solid ${accent}` : `1px solid ${T.border}`,
+                    borderRadius: 6,
+                    cursor: "pointer",
                   }}
                 >
                   {m.image && (
                     <img
                       src={m.image}
                       alt={m.card_name}
-                      style={{ height: 56, borderRadius: 3, flexShrink: 0 }}
+                      style={{ height: 52, borderRadius: 3, flexShrink: 0 }}
                     />
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -174,7 +268,7 @@ const CollectionScanPage: React.FC = () => {
                       style={{
                         fontWeight: 700,
                         color: T.textBright,
-                        fontSize: "0.95em",
+                        fontSize: "0.92em",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -187,19 +281,15 @@ const CollectionScanPage: React.FC = () => {
                     </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 11, color: conf.color, fontWeight: 600 }}>
-                      {conf.text}
-                    </div>
-                    <div style={{ fontSize: 10, color: T.textDim, marginTop: 1 }}>
-                      dist {m.distance}
-                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: conf.color }}>{conf.text}</div>
+                    <div style={{ fontSize: 10, color: T.textDim, marginTop: 1 }}>dist {m.distance}</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Foil override + confirm */}
+          {/* Foil + add */}
           <div style={{ ...panel }}>
             <label
               style={{
@@ -207,7 +297,7 @@ const CollectionScanPage: React.FC = () => {
                 alignItems: "center",
                 gap: "0.5em",
                 cursor: "pointer",
-                marginBottom: "1em",
+                marginBottom: "0.9em",
                 fontSize: 14,
               }}
             >
@@ -215,15 +305,17 @@ const CollectionScanPage: React.FC = () => {
                 type="checkbox"
                 checked={isFoil}
                 onChange={(e) => setIsFoil(e.target.checked)}
-                style={{ width: 16, height: 16 }}
+                style={{ width: 15, height: 15 }}
               />
-              <span style={{ color: isFoil ? T.gold : T.textDim }}>
-                Foil
-              </span>
-              <span style={{ color: T.textDim, fontSize: 12, marginLeft: "0.3em" }}>
-                (camera may not detect foiling — override here)
+              <span style={{ color: isFoil ? T.gold : T.textDim }}>Foil</span>
+              <span style={{ color: T.textDim, fontSize: 11, marginLeft: "0.2em" }}>
+                (override — camera can't detect foiling)
               </span>
             </label>
+
+            {addError && (
+              <p style={{ color: T.red, fontSize: 12, marginBottom: "0.6em" }}>{addError}</p>
+            )}
 
             <div style={{ display: "flex", gap: "0.6em" }}>
               <button
@@ -232,7 +324,7 @@ const CollectionScanPage: React.FC = () => {
                 style={{
                   ...btn.primary(picked?.game === "riftbound" ? T.purple : T.blue),
                   flex: 1,
-                  fontSize: "0.9em",
+                  fontSize: "0.88em",
                   padding: "0.55em 0",
                   opacity: !picked ? 0.5 : 1,
                 }}
@@ -240,35 +332,20 @@ const CollectionScanPage: React.FC = () => {
                 {isAdding ? "Adding…" : "Add to Collection"}
               </button>
               <button
-                onClick={() => {
-                  setStage("idle");
-                  setPreview(null);
-                  setMatches([]);
-                  setPicked(null);
-                  setIsFoil(false);
-                }}
-                style={{ ...btn.ghost(), fontSize: "0.9em", padding: "0.55em 1em" }}
+                onClick={handleRescan}
+                style={{ ...btn.ghost(), fontSize: "0.88em", padding: "0.55em 1em" }}
               >
-                Rescan
+                Clear
               </button>
             </div>
           </div>
         </>
       )}
 
-      {stage === "results" && matches.length === 0 && (
-        <div style={{ ...panel, textAlign: "center", color: T.textDim, padding: "2em" }}>
-          <p>No matches found.</p>
-          <p style={{ fontSize: 12, marginTop: "0.4em" }}>
-            Make sure the card art fills the frame and the image is in focus.
-          </p>
-          <button
-            onClick={() => { setStage("idle"); setPreview(null); }}
-            style={{ ...btn.ghost(), marginTop: "1em", fontSize: "0.85em" }}
-          >
-            Try Again
-          </button>
-        </div>
+      {cameraReady && matches.length === 0 && !scanning && (
+        <p style={{ color: T.textDim, fontSize: 13, textAlign: "center", marginTop: "0.5em" }}>
+          Scanning continuously — hold a card steady in the frame.
+        </p>
       )}
     </div>
   );
