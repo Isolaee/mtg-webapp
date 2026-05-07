@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "http://localhost:8080/api";
 
 function HomePage() {
   const { token, login, logout } = useAuth();
