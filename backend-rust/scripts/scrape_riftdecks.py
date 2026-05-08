@@ -3,14 +3,15 @@
 Scrape riftdecks.com tournament results using Playwright (bypasses Cloudflare).
 Outputs JSON array of events to stdout.
 
-Each event:
-  {source, external_id, name, game, format, event_date,
-   placements: [{placement, player, record, decklist: [{name, qty, card_type}]}]}
+Strategy: each event page is scraped in a fresh browser context (Cloudflare
+allows exactly one navigation per fresh context). Deck pages are NOT visited —
+the deck name/champion is extracted from the event page's placement table, and
+the deck URL is stored as `record` so the frontend can link out.
 """
 import json
 import re
 import sys
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, Page
 
 BASE_URL = "https://riftdecks.com"
 LISTING_URL = "https://riftdecks.com/riftbound-tournaments"
@@ -29,52 +30,18 @@ def parse_placement(text: str):
     return mapping.get(text)
 
 
-def nav(page, url, selector, timeout=30000, wait_timeout=20000):
-    """Navigate and wait for selector. Raise on failure."""
-    page.goto(url, wait_until="domcontentloaded", timeout=timeout)
-    page.wait_for_selector(selector, timeout=wait_timeout)
-
-
-def scrape_deck(browser, url: str) -> list:
-    """Scrape a deck page in a fresh context. Returns list of card dicts."""
-    ctx = browser.new_context()
-    page = ctx.new_page()
-    try:
-        nav(page, url, "#decklist")
-        raw = page.evaluate("""() => {
-            const rows = Array.from(document.querySelectorAll('#decklist tr.card-list-item'));
-            return rows.map(r => ({
-                card_type: r.getAttribute('data-card-type') || '',
-                qty: r.getAttribute('data-quantity') || '0',
-                name: r.querySelector('td:nth-child(3) a')?.textContent?.trim() || '',
-            }));
-        }""")
-        return [
-            {"name": c["name"], "qty": int(c["qty"] or 0), "card_type": c["card_type"]}
-            for c in raw
-            if c["name"] and int(c["qty"] or 0) > 0
-        ]
-    except Exception as e:
-        print(f"[warn] deck {url}: {e}", file=sys.stderr)
-        return []
-    finally:
-        ctx.close()
-
-
-def scrape_event(browser, url: str):
+def scrape_event(browser, url: str) -> dict | None:
     external_id = extract_event_id(url)
     if not external_id:
         return None
 
-    # Fresh context per event — avoids Cloudflare state contamination from listing page.
     ctx = browser.new_context()
     page = ctx.new_page()
     try:
-        nav(page, url, "h1.page-title")
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_selector("h1.page-title", timeout=20000)
 
-        # Extract all DOM data synchronously in one JS call to avoid ElementHandle
-        # invalidation from Cloudflare's internal redirects.
-        event_data = page.evaluate("""() => {
+        data = page.evaluate("""() => {
             const name = document.querySelector('h1.page-title')?.textContent?.trim() || '';
             const fmt = document.querySelector('.bg-pink-lt.text-pink.badge')?.textContent?.trim() || null;
             const meta = document.querySelector("meta[name='description']")?.content || '';
@@ -88,31 +55,36 @@ def scrape_event(browser, url: str):
                 deck_href: row.getAttribute('data-href') || '',
                 rank: row.querySelector('td.deck-rank .text-theme-light strong')?.textContent?.trim() || '',
                 player_raw: row.querySelector('td.deck-name .small.text-secondary')?.textContent?.trim() || '',
+                deck_name: row.querySelector('td.deck-name .text-truncate a')?.textContent?.trim() || '',
+                legend: row.querySelector('td.deck-legend-image span[title]')?.getAttribute('title') || '',
             }));
             return {name, fmt, event_date, placements};
         }""")
 
-        name = event_data["name"] or f"Event {external_id}"
-        fmt = event_data["fmt"]
-        event_date = event_data["event_date"]
+        name = data["name"] or f"Event {external_id}"
+        fmt = data["fmt"]
+        event_date = data["event_date"]
 
         placements = []
-        for row in event_data["placements"]:
+        for row in data["placements"]:
             deck_href = row["deck_href"]
-            if not deck_href:
-                continue
-            deck_url = deck_href if deck_href.startswith("http") else BASE_URL + deck_href
+            deck_url = (deck_href if deck_href.startswith("http") else BASE_URL + deck_href) if deck_href else None
 
             placement_num = parse_placement(row["rank"])
             player_raw = row["player_raw"].strip()
             player = player_raw.removeprefix("by ").strip() or None
 
-            decklist = scrape_deck(browser, deck_url)
+            # Store deck_url as the record so the frontend can link out.
+            # card_type='deck_url' signals to the frontend this is a link, not a card.
+            decklist = []
+            if deck_url:
+                decklist = [{"name": row["deck_name"] or "View deck", "qty": 1, "card_type": "deck_url",
+                             "deck_url": deck_url, "legend": row["legend"]}]
 
             placements.append({
                 "placement": placement_num,
                 "player": player,
-                "record": None,
+                "record": deck_url,  # store deck URL for click-through
                 "decklist": decklist,
             })
 
@@ -125,6 +97,9 @@ def scrape_event(browser, url: str):
             "event_date": event_date,
             "placements": placements,
         }
+    except Exception as e:
+        print(f"[error] {url}: {e}", file=sys.stderr)
+        return None
     finally:
         ctx.close()
 
@@ -137,7 +112,8 @@ def main():
         list_ctx = browser.new_context()
         list_page = list_ctx.new_page()
         try:
-            nav(list_page, LISTING_URL, "a[href*='/riftbound-tournaments/']")
+            list_page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=30000)
+            list_page.wait_for_selector("a[href*='/riftbound-tournaments/']", timeout=15000)
         except Exception as e:
             print(f"[error] listing page failed: {e}", file=sys.stderr)
             list_ctx.close()
@@ -156,15 +132,14 @@ def main():
         """)
         list_ctx.close()
 
+        print(f"[info] found {len(links)} events, scraping up to {MAX_EVENTS}", file=sys.stderr)
+
         events = []
         for url in links[:MAX_EVENTS]:
-            try:
-                ev = scrape_event(browser, url)
-                if ev:
-                    events.append(ev)
-                    print(f"[ok] {ev['name']} ({len(ev['placements'])} placements)", file=sys.stderr)
-            except Exception as e:
-                print(f"[error] {url}: {e}", file=sys.stderr)
+            ev = scrape_event(browser, url)
+            if ev:
+                events.append(ev)
+                print(f"[ok] {ev['name']} ({len(ev['placements'])} placements)", file=sys.stderr)
 
         browser.close()
 

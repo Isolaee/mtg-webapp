@@ -116,4 +116,9 @@ struct RawCard {
     name: String,
     qty: i32,
     card_type: String,
+    // Extra fields the Python scraper may include — ignored by DeckEntry
+    #[allow(dead_code)]
+    deck_url: Option<String>,
+    #[allow(dead_code)]
+    legend: Option<String>,
 }
