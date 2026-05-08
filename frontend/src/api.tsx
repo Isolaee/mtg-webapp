@@ -298,6 +298,58 @@ export const removeFromCollection = async (id: number): Promise<void> => {
   });
 };
 
+// ── Tournaments ──────────────────────────────────────────────────────────────
+
+export interface TournamentEvent {
+  id: number;
+  source: string;
+  external_id: string;
+  name: string;
+  game: string;
+  format: string | null;
+  event_date: string | null;
+  scraped_at: string;
+}
+
+export interface DeckEntry {
+  name: string;
+  qty: number;
+  card_type: string;
+}
+
+export interface TournamentPlacement {
+  id: number;
+  event_id: number;
+  placement: number | null;
+  player: string | null;
+  record: string | null;
+  decklist: string | null; // JSON string of DeckEntry[]
+}
+
+export interface TournamentEventWithPlacements extends TournamentEvent {
+  placements: TournamentPlacement[];
+}
+
+export const fetchTournaments = async (
+  game: string,
+  format?: string,
+  limit = 50,
+): Promise<TournamentEvent[]> => {
+  const response = await axios.get<TournamentEvent[]>(`${API_BASE_URL}/tournaments`, {
+    params: { game, format: format || undefined, limit },
+  });
+  return response.data;
+};
+
+export const fetchTournament = async (
+  id: number,
+): Promise<TournamentEventWithPlacements> => {
+  const response = await axios.get<TournamentEventWithPlacements>(
+    `${API_BASE_URL}/tournaments/${id}`,
+  );
+  return response.data;
+};
+
 export const scanCard = async (imageBase64: string): Promise<ScanMatch[]> => {
   const byteString = atob(imageBase64);
   const bytes = new Uint8Array(byteString.length);
