@@ -36,13 +36,15 @@ pub async fn run_all_scrapers(
 ) -> anyhow::Result<()> {
     let scraped_at = Utc::now().to_rfc3339();
 
-    // MTGO — reqwest, persists incrementally
-    if let Err(e) = mtgo::scrape(client, pool, &scraped_at).await {
+    // Run MTGO and riftdecks in parallel — each persists incrementally.
+    let mtgo_fut = mtgo::scrape(client, pool, &scraped_at);
+    let rd_fut = riftdecks::scrape(pool, &scraped_at);
+    let (mtgo_res, rd_res) = tokio::join!(mtgo_fut, rd_fut);
+
+    if let Err(e) = mtgo_res {
         tracing::error!("MTGO scrape failed: {e}");
     }
-
-    // riftdecks.com — headless Firefox via geckodriver + fantoccini
-    if let Err(e) = riftdecks::scrape(pool, &scraped_at).await {
+    if let Err(e) = rd_res {
         tracing::error!("riftdecks scrape failed: {e}");
     }
 
