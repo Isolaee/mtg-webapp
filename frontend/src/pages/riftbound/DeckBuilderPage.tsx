@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   fetchRbCards,
   fetchRbCard,
@@ -25,6 +25,7 @@ const OFFSET = 16;
 
 const DeckBuilderPage: React.FC = () => {
   const { username } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchName, setSearchName] = useState("");
   const [faction, setFaction] = useState("");
@@ -220,6 +221,27 @@ const DeckBuilderPage: React.FC = () => {
         >
           {loadOpen ? "Cancel" : "Load Deck"}
         </button>
+        {username && deckName.trim() && (
+          <button
+            onClick={() =>
+              navigate(
+                `/deck-analysis?deck=${encodeURIComponent(deckName)}&game=riftbound`,
+              )
+            }
+            style={{
+              padding: "0.5em 1.2em",
+              background: "transparent",
+              color: T.purple,
+              border: `1px solid ${T.purple}66`,
+              borderRadius: 4,
+              fontWeight: 600,
+              fontSize: "0.85em",
+              cursor: "pointer",
+            }}
+          >
+            Analyze
+          </button>
+        )}
       </div>
 
       {/* Load panel */}

@@ -142,6 +142,19 @@ pub async fn list_placements(
     .await?)
 }
 
+pub async fn update_placement_decklist(
+    pool: &SqlitePool,
+    placement_id: i64,
+    decklist_json: &str,
+) -> anyhow::Result<()> {
+    sqlx::query("UPDATE tournament_placements SET decklist = ? WHERE id = ?")
+        .bind(decklist_json)
+        .bind(placement_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn get_event(pool: &SqlitePool, id: i64) -> anyhow::Result<Option<TournamentEvent>> {
     Ok(sqlx::query_as::<_, TournamentEvent>(
         "SELECT id, source, external_id, name, game, format, event_date, scraped_at

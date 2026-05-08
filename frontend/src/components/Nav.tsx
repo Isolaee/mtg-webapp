@@ -9,6 +9,7 @@ const MTG_LINKS = [
   { to: "/my-decks", label: "My Decks" },
   { to: "/collection", label: "Collection" },
   { to: "/tournaments", label: "Tournaments" },
+  { to: "/deck-analysis", label: "Analysis" },
 ];
 
 const RB_LINKS = [

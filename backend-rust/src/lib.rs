@@ -1,3 +1,4 @@
+pub mod analysis;
 pub mod db;
 pub mod models;
 pub mod phash;

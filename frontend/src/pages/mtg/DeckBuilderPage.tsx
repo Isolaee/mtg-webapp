@@ -4,7 +4,7 @@ import FoundCardsComponent from "../../components/FoundCardsComponent";
 import StackVisualizer from "../../components/visualStack";
 import DeckStats from "../../components/DeckStats";
 import FormatSelection from "../../components/FormatSelection";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Card,
   MtgDeckSummary,
@@ -24,6 +24,7 @@ interface DeckEntry {
 
 const DeckBuilderPage: React.FC = () => {
   const { username } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [deck, setDeck] = useState<DeckEntry[]>([]);
   const [deckName, setDeckName] = useState("");
@@ -250,6 +251,25 @@ const DeckBuilderPage: React.FC = () => {
         >
           {loadOpen ? "Cancel" : "Load Deck"}
         </button>
+        {username && deckName.trim() && (
+          <button
+            onClick={() =>
+              navigate(`/deck-analysis?deck=${encodeURIComponent(deckName)}`)
+            }
+            style={{
+              padding: "0.5em 1.2em",
+              background: "transparent",
+              color: T.purple,
+              border: `1px solid ${T.purple}66`,
+              borderRadius: 4,
+              fontWeight: 600,
+              fontSize: "0.85em",
+              cursor: "pointer",
+            }}
+          >
+            Analyze
+          </button>
+        )}
         <label
           style={{
             padding: "0.5em 1.1em",

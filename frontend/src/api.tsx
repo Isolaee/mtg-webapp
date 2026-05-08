@@ -350,6 +350,80 @@ export const fetchTournament = async (
   return response.data;
 };
 
+// ── Deck Analysis ────────────────────────────────────────────────────────────
+
+export interface SimilarResult {
+  placementId: number;
+  player: string | null;
+  placement: number | null;
+  eventName: string;
+  format: string | null;
+  overallScore: number;
+  classicScore: number;
+  semanticScore: number;
+  jaccard: number;
+  cosine: number;
+  colorScore: number;
+  cmcScore: number;
+}
+
+export interface SimilarResponse {
+  deckName: string;
+  format: string;
+  results: SimilarResult[];
+}
+
+export interface CompareResponse {
+  overallScore: number;
+  classicScore: number;
+  semanticScore: number;
+  jaccard: number;
+  cosine: number;
+  colorScore: number;
+  cmcScore: number;
+  sharedCards: string[];
+  uniqueToA: string[];
+  uniqueToB: string[];
+}
+
+export type DeckRef =
+  | { type: "user"; name: string }
+  | { type: "tournament"; placementId: number };
+
+export const fetchSimilarDecks = async (
+  deckName: string,
+  format?: string,
+  limit = 20,
+  game = "mtg",
+): Promise<SimilarResponse> => {
+  const response = await axios.get<SimilarResponse>(
+    `${API_BASE_URL}/analysis/similar`,
+    {
+      params: { deck_name: deckName, format: format || undefined, limit, game },
+      headers: authHeaders(),
+    },
+  );
+  return response.data;
+};
+
+export const compareDecks = async (
+  deckA: DeckRef,
+  deckB: DeckRef,
+): Promise<CompareResponse> => {
+  const response = await axios.post<CompareResponse>(
+    `${API_BASE_URL}/analysis/compare`,
+    { deckA, deckB },
+    { headers: authHeaders() },
+  );
+  return response.data;
+};
+
+export const precomputeTags = async (): Promise<void> => {
+  await axios.get(`${API_BASE_URL}/analysis/precompute`, {
+    headers: authHeaders(),
+  });
+};
+
 export const scanCard = async (imageBase64: string): Promise<ScanMatch[]> => {
   const byteString = atob(imageBase64);
   const bytes = new Uint8Array(byteString.length);

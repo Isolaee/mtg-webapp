@@ -1,3 +1,4 @@
+pub mod analysis;
 pub mod auth;
 pub mod cards;
 pub mod collection;
@@ -28,5 +29,6 @@ pub fn router(pool: SqlitePool) -> Router {
         .merge(auth::router(pool.clone()))
         .merge(riftbound::router(pool.clone()))
         .merge(collection::router(pool.clone()))
+        .merge(analysis::router(pool.clone()))
         .merge(tournaments::router(pool))
 }

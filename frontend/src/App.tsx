@@ -22,6 +22,7 @@ import ProfilePage from "./pages/ProfilePage";
 import CollectionPage from "./pages/CollectionPage";
 import CollectionScanPage from "./pages/CollectionScanPage";
 import TournamentsPage from "./pages/TournamentsPage";
+import DeckAnalysisPage from "./pages/mtg/DeckAnalysisPage";
 
 const SLOT_ID_LEADERBOARD = "XXXXXXXXXX"; // replace with AdSense leaderboard ad unit slot ID
 
@@ -80,6 +81,14 @@ const AppInner: React.FC = () => {
             />
             {/* MTG Tournaments */}
             <Route path="/tournaments" element={<TournamentsPage />} />
+            <Route
+              path="/deck-analysis"
+              element={
+                <ProtectedRoute>
+                  <DeckAnalysisPage />
+                </ProtectedRoute>
+              }
+            />
             {/* Riftbound */}
             <Route path="/riftbound" element={<CardBrowserPage />} />
             <Route path="/riftbound/deck-builder" element={<RbDeckBuilderPage />} />
