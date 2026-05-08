@@ -1,8 +1,8 @@
-use tcg_backend::{db, routes};
+use tcg_backend::{db, routes, scrapers};
 
 use axum::Router;
 use dotenvy::dotenv;
-use std::env;
+use std::{env, time::Duration};
 use axum::http::HeaderValue;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -23,6 +23,24 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "sqlite:../database/mtg_card_db.db".to_string());
 
     let pool = db::create_pool(&database_url).await?;
+
+    let scrape_pool = pool.clone();
+    tokio::spawn(async move {
+        let client = reqwest::Client::builder()
+            .user_agent(
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
+                 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            )
+            .timeout(Duration::from_secs(30))
+            .build()
+            .unwrap();
+        loop {
+            if let Err(e) = scrapers::run_all_scrapers(&client, &scrape_pool).await {
+                tracing::error!("scrape error: {e}");
+            }
+            tokio::time::sleep(Duration::from_secs(6 * 3600)).await;
+        }
+    });
 
     let cors = CorsLayer::new()
         .allow_origin([

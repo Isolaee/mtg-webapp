@@ -20,3 +20,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 image = { version = "0.24", default-features = false, features = ["jpeg", "png", "webp"] }
+scraper = "0.21"
+chrono = { version = "0.4", features = ["serde"] }
+fantoccini = "0.21"

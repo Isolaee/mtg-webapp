@@ -3,6 +3,7 @@ pub mod cards;
 pub mod collection;
 pub mod decks;
 pub mod riftbound;
+pub mod tournaments;
 
 use axum::{
     http::{header, HeaderMap, StatusCode},
@@ -26,5 +27,6 @@ pub fn router(pool: SqlitePool) -> Router {
         .merge(decks::router(pool.clone()))
         .merge(auth::router(pool.clone()))
         .merge(riftbound::router(pool.clone()))
-        .merge(collection::router(pool))
+        .merge(collection::router(pool.clone()))
+        .merge(tournaments::router(pool))
 }

@@ -2,6 +2,7 @@ pub mod cards;
 pub mod collection;
 pub mod decks;
 pub mod riftbound;
+pub mod tournaments;
 pub mod users;
 
 use sqlx::SqlitePool;
@@ -10,6 +11,7 @@ pub async fn create_pool(database_url: &str) -> anyhow::Result<SqlitePool> {
     let pool = SqlitePool::connect(database_url).await?;
     riftbound::ensure_tables(&pool).await?;
     collection::ensure_tables(&pool).await?;
+    tournaments::ensure_tables(&pool).await?;
     migrate_columns(&pool).await?;
     Ok(pool)
 }
