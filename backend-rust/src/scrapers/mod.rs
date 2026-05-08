@@ -41,10 +41,9 @@ pub async fn run_all_scrapers(
         tracing::error!("MTGO scrape failed: {e}");
     }
 
-    // riftdecks.com — headless Chromium via fantoccini
-    match riftdecks::scrape().await {
-        Ok(events) => persist_events(pool, events, &scraped_at).await?,
-        Err(e) => tracing::error!("riftdecks scrape failed: {e}"),
+    // riftdecks.com — headless Firefox via geckodriver + fantoccini
+    if let Err(e) = riftdecks::scrape(pool, &scraped_at).await {
+        tracing::error!("riftdecks scrape failed: {e}");
     }
 
     Ok(())

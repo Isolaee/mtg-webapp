@@ -5,18 +5,32 @@ use scraper::{Html, Selector};
 const BASE_URL: &str = "https://riftdecks.com";
 const LISTING_URL: &str = "https://riftdecks.com/riftbound-tournaments";
 
-pub async fn scrape() -> anyhow::Result<Vec<ScrapedEvent>> {
+pub async fn scrape(
+    pool: &sqlx::SqlitePool,
+    scraped_at: &str,
+) -> anyhow::Result<()> {
+    let mut caps = serde_json::Map::new();
+    caps.insert(
+        "moz:firefoxOptions".to_string(),
+        serde_json::json!({"args": ["-headless"]}),
+    );
+
     let client = ClientBuilder::native()
+        .capabilities(caps)
         .connect("http://localhost:4444")
         .await
-        .map_err(|e| anyhow::anyhow!("chromedriver connect failed: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("geckodriver connect failed (is geckodriver running on :4444?): {e}"))?;
 
-    let result = scrape_inner(&client).await;
+    let result = scrape_inner(&client, pool, scraped_at).await;
     let _ = client.close().await;
     result
 }
 
-async fn scrape_inner(client: &Client) -> anyhow::Result<Vec<ScrapedEvent>> {
+async fn scrape_inner(
+    client: &Client,
+    pool: &sqlx::SqlitePool,
+    scraped_at: &str,
+) -> anyhow::Result<()> {
     client.goto(LISTING_URL).await?;
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
 
@@ -27,18 +41,20 @@ async fn scrape_inner(client: &Client) -> anyhow::Result<Vec<ScrapedEvent>> {
         tracing::warn!("riftdecks: no event links found on listing page");
     }
 
-    let mut events = Vec::new();
-
     for event_url in event_urls.iter().take(10) {
         match scrape_event(client, event_url).await {
-            Ok(Some(event)) => events.push(event),
+            Ok(Some(event)) => {
+                if let Err(e) = super::persist_events(pool, vec![event], scraped_at).await {
+                    tracing::warn!("riftdecks: persist failed for {event_url}: {e}");
+                }
+            }
             Ok(None) => {}
             Err(e) => tracing::error!("riftdecks: failed scraping {event_url}: {e}"),
         }
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 
-    Ok(events)
+    Ok(())
 }
 
 fn parse_event_listing(html: &str) -> Vec<String> {
