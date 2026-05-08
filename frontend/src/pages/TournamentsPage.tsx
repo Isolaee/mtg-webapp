@@ -97,14 +97,23 @@ const PlacementRow: React.FC<{ p: TournamentPlacement; accentColor: string }> = 
   accentColor,
 }) => {
   const [open, setOpen] = useState(false);
-  const hasDeck = !!p.decklist && p.decklist !== "[]";
+  const cards = parseDeck(p.decklist);
+
+  // Riftdecks placements store a deck_url entry — show deck name as link, no expand.
+  const deckLink = cards.find((c) => c.card_type === "deck_url");
+  const deckUrl = p.record?.startsWith("http") ? p.record : null;
+  const deckName = deckLink?.name ?? null;
+  const legend = (deckLink as any)?.legend ?? null;
+
+  // MTGO placements have real card lists.
+  const hasRealDeck = !deckLink && cards.length > 0;
 
   return (
     <>
       <tr
-        onClick={() => hasDeck && setOpen((o) => !o)}
+        onClick={() => hasRealDeck && setOpen((o) => !o)}
         style={{
-          cursor: hasDeck ? "pointer" : "default",
+          cursor: hasRealDeck ? "pointer" : "default",
           background: open ? `${accentColor}11` : "transparent",
           transition: "background 0.15s",
         }}
@@ -123,18 +132,30 @@ const PlacementRow: React.FC<{ p: TournamentPlacement; accentColor: string }> = 
         <td style={{ padding: "0.5em 0.8em", color: T.textBright, fontSize: 13 }}>
           {p.player ?? "—"}
         </td>
-        <td style={{ padding: "0.5em 0.8em", color: T.textDim, fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
-          {p.record ?? "—"}
+        <td style={{ padding: "0.5em 0.8em", color: T.textDim, fontSize: 12 }}>
+          {deckUrl ? (
+            <a
+              href={deckUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: accentColor, textDecoration: "none", fontWeight: 600 }}
+            >
+              {deckName || "View deck"}{legend ? ` · ${legend}` : ""}
+            </a>
+          ) : (
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{p.record ?? "—"}</span>
+          )}
         </td>
         <td
           style={{
             padding: "0.5em 0.8em",
-            color: hasDeck ? accentColor : T.textDim,
+            color: hasRealDeck ? accentColor : T.textDim,
             fontSize: 11,
             letterSpacing: "0.04em",
           }}
         >
-          {hasDeck ? (open ? "▲ hide" : "▼ show") : ""}
+          {hasRealDeck ? (open ? "▲ hide" : "▼ show") : ""}
         </td>
       </tr>
       {open && (
