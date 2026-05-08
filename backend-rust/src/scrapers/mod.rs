@@ -36,10 +36,9 @@ pub async fn run_all_scrapers(
 ) -> anyhow::Result<()> {
     let scraped_at = Utc::now().to_rfc3339();
 
-    // MTGO — reqwest JSON API (no Cloudflare)
-    match mtgo::scrape(client).await {
-        Ok(events) => persist_events(pool, events, &scraped_at).await?,
-        Err(e) => tracing::error!("MTGO scrape failed: {e}"),
+    // MTGO — reqwest, persists incrementally
+    if let Err(e) = mtgo::scrape(client, pool, &scraped_at).await {
+        tracing::error!("MTGO scrape failed: {e}");
     }
 
     // riftdecks.com — headless Chromium via fantoccini
@@ -51,7 +50,7 @@ pub async fn run_all_scrapers(
     Ok(())
 }
 
-async fn persist_events(
+pub(super) async fn persist_events(
     pool: &SqlitePool,
     events: Vec<ScrapedEvent>,
     scraped_at: &str,
