@@ -3,7 +3,7 @@ use tcg_backend::{db, routes, scrapers};
 use axum::Router;
 use dotenvy::dotenv;
 use std::{env, time::Duration};
-use axum::http::HeaderValue;
+use axum::http::{HeaderValue, Method};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -48,8 +48,8 @@ async fn main() -> anyhow::Result<()> {
             "capacitor://localhost".parse::<HeaderValue>().unwrap(),
             "https://localhost".parse::<HeaderValue>().unwrap(),
         ])
-        .allow_methods(tower_http::cors::Any)
-        .allow_headers(tower_http::cors::Any);
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers([axum::http::header::AUTHORIZATION, axum::http::header::CONTENT_TYPE]);
 
     let app = Router::new()
         .route("/health", axum::routing::get(|| async { "ok" }))

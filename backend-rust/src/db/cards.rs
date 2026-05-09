@@ -8,7 +8,7 @@ const SELECT_COLS: &str =
      cardtype, typeline, artist, legalities, image";
 
 pub async fn find_all(pool: &SqlitePool) -> anyhow::Result<Vec<Card>> {
-    let sql = format!("SELECT {SELECT_COLS} FROM cards");
+    let sql = format!("SELECT {SELECT_COLS} FROM cards LIMIT 500");
     Ok(sqlx::query_as::<_, Card>(&sql).fetch_all(pool).await?)
 }
 

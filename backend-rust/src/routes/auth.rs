@@ -12,7 +12,7 @@ use sqlx::SqlitePool;
 use std::env;
 
 fn jwt_secret() -> String {
-    env::var("JWT_SECRET").unwrap_or_else(|_| "super-secret-key".to_string())
+    env::var("JWT_SECRET").expect("JWT_SECRET env var must be set")
 }
 
 #[derive(Serialize, Deserialize)]
@@ -74,6 +74,9 @@ async fn register(
 ) -> impl IntoResponse {
     if body.username.is_empty() || body.password.is_empty() {
         return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"msg": "Missing username or password"}))).into_response();
+    }
+    if body.password.len() < 8 {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"msg": "Password must be at least 8 characters"}))).into_response();
     }
     if db::users::find_by_username(&pool, &body.username).await.ok().flatten().is_some() {
         return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"msg": "User already exists"}))).into_response();

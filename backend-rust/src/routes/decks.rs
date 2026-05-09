@@ -125,7 +125,10 @@ async fn delete_deck(
 }
 
 // File-parse only — resolves card names against DB, returns deck data without saving
-async fn upload_deck(State(pool): State<SqlitePool>, multipart: Multipart) -> impl IntoResponse {
+async fn upload_deck(State(pool): State<SqlitePool>, headers: HeaderMap, multipart: Multipart) -> impl IntoResponse {
+    if let Err(r) = require_auth(&headers) {
+        return r;
+    }
     let form = match parse_multipart(multipart).await {
         Ok(f) => f,
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"msg": e.to_string()}))).into_response(),
@@ -134,6 +137,9 @@ async fn upload_deck(State(pool): State<SqlitePool>, multipart: Multipart) -> im
         return (StatusCode::BAD_REQUEST, Json(json!({"msg": "No file uploaded"}))).into_response();
     }
     let card_names = parse_card_list(&form.file_content);
+    if card_names.len() > 500 {
+        return (StatusCode::BAD_REQUEST, Json(json!({"msg": "Deck exceeds 500 cards"}))).into_response();
+    }
     match build_deck_json(&pool, &card_names, &form.commander_name).await {
         Ok((cards, commander)) => Json(json!({
             "name": form.deck_name,
@@ -182,7 +188,7 @@ fn parse_card_list(content: &str) -> Vec<String> {
             continue;
         }
         if let Some(caps) = re.captures(line) {
-            let qty: usize = caps[1].parse().unwrap_or(1);
+            let qty: usize = caps[1].parse::<usize>().unwrap_or(1).min(99);
             let name = caps[2].trim().to_string();
             for _ in 0..qty {
                 names.push(name.clone());

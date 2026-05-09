@@ -1,8 +1,9 @@
 use crate::db;
 use crate::models::Card;
+use crate::routes::require_auth;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::get,
     Json, Router,
@@ -81,8 +82,12 @@ async fn get_card(
 
 async fn create_card(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     Json(card): Json<Card>,
 ) -> impl IntoResponse {
+    if let Err(r) = require_auth(&headers) {
+        return r;
+    }
     match db::cards::insert(&pool, &card).await {
         Ok(_) => (StatusCode::CREATED, Json(card)).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
@@ -91,9 +96,13 @@ async fn create_card(
 
 async fn update_card(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     Path(name): Path<String>,
     Json(card): Json<Card>,
 ) -> impl IntoResponse {
+    if let Err(r) = require_auth(&headers) {
+        return r;
+    }
     match db::cards::update(&pool, &name, &card).await {
         Ok(true) => Json(card).into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Card not found"}))).into_response(),
@@ -103,8 +112,12 @@ async fn update_card(
 
 async fn delete_card(
     State(pool): State<SqlitePool>,
+    headers: HeaderMap,
     Path(name): Path<String>,
 ) -> impl IntoResponse {
+    if let Err(r) = require_auth(&headers) {
+        return r;
+    }
     match db::cards::delete(&pool, &name).await {
         Ok(true) => Json(serde_json::json!({"message": "Card deleted successfully"})).into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Card not found"}))).into_response(),

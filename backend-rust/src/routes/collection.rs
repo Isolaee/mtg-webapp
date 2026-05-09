@@ -2,7 +2,7 @@ use crate::db;
 use crate::phash::phash;
 use crate::routes::require_auth;
 use axum::{
-    extract::{Multipart, Path, Query, State},
+    extract::{DefaultBodyLimit, Multipart, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, put},
@@ -17,7 +17,7 @@ pub fn router(pool: SqlitePool) -> Router {
     Router::new()
         .route("/collection", get(list_collection).post(add_to_collection))
         .route("/collection/:id", put(update_entry).delete(remove_entry))
-        .route("/collection/scan", axum::routing::post(scan_card))
+        .route("/collection/scan", axum::routing::post(scan_card).layer(DefaultBodyLimit::max(5 * 1024 * 1024)))
         .with_state(pool)
 }
 
