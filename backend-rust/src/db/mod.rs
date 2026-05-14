@@ -1,4 +1,5 @@
 pub mod analysis;
+pub mod auth_tokens;
 pub mod cards;
 pub mod collection;
 pub mod decks;
@@ -14,6 +15,7 @@ pub async fn create_pool(database_url: &str) -> anyhow::Result<SqlitePool> {
     collection::ensure_tables(&pool).await?;
     tournaments::ensure_tables(&pool).await?;
     analysis::ensure_tables(&pool).await?;
+    auth_tokens::ensure_table(&pool).await?;
     migrate_columns(&pool).await?;
     Ok(pool)
 }

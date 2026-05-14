@@ -2,7 +2,7 @@ use tcg_backend::{db, routes, scrapers};
 
 use axum::Router;
 use dotenvy::dotenv;
-use std::{env, time::Duration};
+use std::{env, net::SocketAddr, time::Duration};
 use axum::http::{HeaderValue, Method};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -60,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
     let addr = "0.0.0.0:8080";
     tracing::info!("listening on {addr}");
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await?;
 
     Ok(())
 }

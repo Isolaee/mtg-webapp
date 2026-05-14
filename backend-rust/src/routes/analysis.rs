@@ -17,7 +17,7 @@ use crate::analysis::{
     compare, DeckEntry,
 };
 use crate::db;
-use crate::routes::require_auth;
+use crate::routes::{require_admin, require_auth};
 
 pub fn router(pool: SqlitePool) -> Router {
     Router::new()
@@ -463,6 +463,9 @@ async fn precompute_tags(
     if let Err(r) = require_auth(&headers) {
         return r;
     }
+    if let Err(r) = require_admin(&headers) {
+        return r;
+    }
     let pool_clone = pool.clone();
     tokio::spawn(async move {
         let mut count = 0u32;
@@ -507,11 +510,15 @@ async fn enrich_riftdecks(
     if let Err(r) = require_auth(&headers) {
         return r;
     }
+    if let Err(r) = require_admin(&headers) {
+        return r;
+    }
 
     let script = match resolve_enrich_script() {
         Ok(p) => p,
         Err(e) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()})))
+            tracing::error!("enrich_riftdecks script resolve error: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"})))
                 .into_response()
         }
     };

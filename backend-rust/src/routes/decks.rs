@@ -39,7 +39,10 @@ async fn list_decks(State(pool): State<SqlitePool>, headers: HeaderMap) -> impl 
                 .collect();
             Json(json!({"decks": summaries})).into_response()
         }
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("decks db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }
 
@@ -65,7 +68,10 @@ async fn get_deck(
         }))
         .into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Deck not found"}))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("decks db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }
 
@@ -104,7 +110,10 @@ async fn save_deck(
     .await
     {
         Ok(_) => (StatusCode::CREATED, Json(json!({"msg": "Deck saved"}))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("decks db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }
 
@@ -120,7 +129,10 @@ async fn delete_deck(
     match db::decks::delete_by_name_and_user(&pool, &name, &user).await {
         Ok(1..) => Json(json!({"msg": "Deck deleted"})).into_response(),
         Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Deck not found"}))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("decks db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }
 

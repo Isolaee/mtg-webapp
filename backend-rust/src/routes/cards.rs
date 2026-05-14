@@ -46,7 +46,10 @@ async fn list_cards(
         .await
         {
             Ok(cards) => Json(cards).into_response(),
-            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+            Err(e) => {
+                tracing::error!("list_cards filter error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": "Internal server error"}))).into_response()
+            }
         };
     }
 
@@ -59,12 +62,18 @@ async fn list_cards(
             let names: Vec<String> = name.split(';').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
             match db::cards::find_by_names(&pool, &names).await {
                 Ok(cards) => Json(cards).into_response(),
-                Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+                Err(e) => {
+                    tracing::error!("list_cards names error: {e}");
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": "Internal server error"}))).into_response()
+                }
             }
         }
         None => match db::cards::find_all(&pool).await {
             Ok(cards) => Json(cards).into_response(),
-            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+            Err(e) => {
+                tracing::error!("list_cards all error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": "Internal server error"}))).into_response()
+            }
         },
     }
 }
@@ -76,7 +85,10 @@ async fn get_card(
     match db::cards::find_by_name_exact(&pool, &name).await {
         Ok(Some(card)) => Json(card).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Card not found"}))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("get_card error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }
 
@@ -90,7 +102,10 @@ async fn create_card(
     }
     match db::cards::insert(&pool, &card).await {
         Ok(_) => (StatusCode::CREATED, Json(card)).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("create_card error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }
 
@@ -106,7 +121,10 @@ async fn update_card(
     match db::cards::update(&pool, &name, &card).await {
         Ok(true) => Json(card).into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Card not found"}))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("update_card error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }
 
@@ -121,6 +139,9 @@ async fn delete_card(
     match db::cards::delete(&pool, &name).await {
         Ok(true) => Json(serde_json::json!({"message": "Card deleted successfully"})).into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Card not found"}))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("delete_card error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"msg": "Internal server error"}))).into_response()
+        }
     }
 }

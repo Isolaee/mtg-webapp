@@ -34,7 +34,8 @@ async fn list_collection(
     match db::collection::find_all_by_user(&pool, &user, game).await {
         Ok(entries) => Json(json!({"collection": entries})).into_response(),
         Err(e) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response()
+            tracing::error!("list_collection db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
         }
     }
 }
@@ -59,7 +60,8 @@ async fn add_to_collection(
     match db::collection::upsert(&pool, &user, &input.game, &input.card_id, is_foil).await {
         Ok(id) => (StatusCode::CREATED, Json(json!({"id": id}))).into_response(),
         Err(e) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response()
+            tracing::error!("add_to_collection db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
         }
     }
 }
@@ -87,11 +89,10 @@ async fn update_entry(
         .await
     {
         Ok(1..) => Json(json!({"msg": "Updated"})).into_response(),
-        Ok(_) => {
-            (StatusCode::NOT_FOUND, Json(json!({"msg": "Entry not found"}))).into_response()
-        }
+        Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Entry not found"}))).into_response(),
         Err(e) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response()
+            tracing::error!("update_entry db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
         }
     }
 }
@@ -107,11 +108,10 @@ async fn remove_entry(
     };
     match db::collection::delete_by_id_and_user(&pool, id, &user).await {
         Ok(1..) => Json(json!({"msg": "Deleted"})).into_response(),
-        Ok(_) => {
-            (StatusCode::NOT_FOUND, Json(json!({"msg": "Entry not found"}))).into_response()
-        }
+        Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Entry not found"}))).into_response(),
         Err(e) => {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": e.to_string()}))).into_response()
+            tracing::error!("remove_entry db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
         }
     }
 }
@@ -163,11 +163,8 @@ async fn scan_card(
     let all_hashes = match db::collection::find_all_hashes(&pool).await {
         Ok(h) => h,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"msg": e.to_string()})),
-            )
-                .into_response()
+            tracing::error!("scan_card hash lookup error: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response();
         }
     };
 
