@@ -80,7 +80,7 @@ export class TcgStack extends cdk.Stack {
     userData.addCommands(
       'set -euo pipefail',
       'apt-get update -y',
-      'apt-get install -y nginx',
+      'apt-get install -y nginx awscli',
 
       // SSM agent (snap version works on Ubuntu 22.04 out of the box)
       'snap install amazon-ssm-agent --classic',
