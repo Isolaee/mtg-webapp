@@ -7,18 +7,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
-// Ubuntu 22.04 LTS AMI IDs (amd64, hvm:ebs-ssd) — update if deploying to a new region.
-// Find latest: aws ec2 describe-images --owners 099720109477 \
-//   --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
-//   --query 'sort_by(Images,&CreationDate)[-1].ImageId'
-const UBUNTU_AMI_BY_REGION: Record<string, string> = {
-  'eu-west-1':    'ami-0c1c30571d2dae5be',
-  'eu-west-2':    'ami-0505148b3591e4c07',
-  'us-east-1':    'ami-0c7217cdde317cfec',
-  'us-east-2':    'ami-05fb0b8c1424f266b',
-  'us-west-2':    'ami-008fe2fc65df48dac',
-  'ap-southeast-1': 'ami-078c1149d8ad719a7',
-};
 
 export class TcgStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -158,19 +146,15 @@ export class TcgStack extends cdk.Stack {
     );
 
     // ── EC2 instance ───────────────────────────────────────────────────────
-    const amiId = UBUNTU_AMI_BY_REGION[region];
-    if (!amiId) {
-      throw new Error(
-        `No Ubuntu AMI configured for region ${region}. ` +
-        'Add an entry to UBUNTU_AMI_BY_REGION in lib/tcg-stack.ts.'
-      );
-    }
-
     const instance = new ec2.Instance(this, 'Backend', {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      machineImage: ec2.MachineImage.genericLinux({ [region]: amiId }),
+      // Dynamic lookup: finds the latest Ubuntu 22.04 LTS AMI in whatever region is active.
+      machineImage: ec2.MachineImage.lookup({
+        name: 'ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*',
+        owners: ['099720109477'], // Canonical Ltd
+      }),
       securityGroup: sg,
       role: instanceRole,
       userData,
