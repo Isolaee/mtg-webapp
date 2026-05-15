@@ -626,6 +626,11 @@ The premium backend is complete (database column, API endpoint, UI). The only mi
 - [ ] `.github/workflows/deploy.yml` created with correct values
 - [ ] First push to `main` — CI passes end-to-end
 
+> **Note — backup bucket cleanup:** The deploy workflow's "Clean up any previous failed stack" step
+> deletes the orphaned `tcg-db-backups-*` bucket when no stack exists. This is safe while the bucket
+> contains no real data. Once real backups are present, remove the bucket-deletion block from the
+> workflow and use `cdk import` instead to adopt the existing bucket into the new stack.
+
 ### DNS (Cloudflare)
 - [ ] CNAME `@` → CloudFront domain, proxied
 - [ ] CNAME `www` → CloudFront domain, proxied
