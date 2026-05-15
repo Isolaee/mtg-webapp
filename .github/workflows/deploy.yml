@@ -142,6 +142,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl tools
+        run: sudo apt-get install -y musl-tools
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -152,7 +157,7 @@ jobs:
         env:
           # SQLx runtime queries — no DB needed at compile time
           SQLX_OFFLINE: "true"
-        run: cargo build --release --bin tcg-backend --bin seed_riftbound --bin hash_cards
+        run: cargo build --release --target x86_64-unknown-linux-musl --bin tcg-backend --bin seed_riftbound --bin hash_cards
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -163,11 +168,11 @@ jobs:
 
       - name: Stage binaries in S3
         run: |
-          aws s3 cp backend-rust/target/release/tcg-backend \
+          aws s3 cp backend-rust/target/x86_64-unknown-linux-musl/release/tcg-backend \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/tcg-backend
-          aws s3 cp backend-rust/target/release/seed_riftbound \
+          aws s3 cp backend-rust/target/x86_64-unknown-linux-musl/release/seed_riftbound \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/seed_riftbound
-          aws s3 cp backend-rust/target/release/hash_cards \
+          aws s3 cp backend-rust/target/x86_64-unknown-linux-musl/release/hash_cards \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/hash_cards
 
       - name: Deploy via SSM
