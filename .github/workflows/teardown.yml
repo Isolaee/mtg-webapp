@@ -24,13 +24,13 @@ jobs:
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ secrets.AWS_REGION }}
+          aws-region:            ${{ vars.AWS_REGION }}
 
       - name: Back up database before destroying anything
         env:
           INSTANCE_ID:   ${{ secrets.EC2_INSTANCE_ID }}
           BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
-          AWS_REGION:    ${{ secrets.AWS_REGION }}
+          AWS_REGION:    ${{ vars.AWS_REGION }}
         run: |
           TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
           BACKUP_KEY="teardown-backup/mtg_card_db_${TIMESTAMP}.db"
