@@ -33,10 +33,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ vars.AWS_REGION }}
 
+      - name: CDK bootstrap
+        working-directory: cdk
+        run: npx cdk bootstrap
+
       - name: CDK deploy
         working-directory: cdk
         run: |
-          npm install
           npm run build
           npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
 
