@@ -15,6 +15,7 @@ jobs:
   teardown:
     name: Backup DB then CDK destroy
     runs-on: ubuntu-latest
+    environment: production
     if: ${{ github.event.inputs.confirm == 'destroy everything' }}
     steps:
       - uses: actions/checkout@v4

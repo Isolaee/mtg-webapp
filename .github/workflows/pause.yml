@@ -11,6 +11,7 @@ jobs:
   pause:
     name: Stop EC2 instance
     runs-on: ubuntu-latest
+    environment: production
     if: ${{ github.event.inputs.confirm == 'pause' }}
     steps:
       - name: Configure AWS credentials
