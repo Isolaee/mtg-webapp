@@ -80,7 +80,7 @@ jobs:
       - name: CDK destroy
         working-directory: cdk
         run: |
-          npm ci
+          npm install
           npm run build
           # --force skips the confirmation prompt
           npx cdk destroy --force

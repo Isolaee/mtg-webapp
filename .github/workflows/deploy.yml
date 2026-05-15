@@ -36,7 +36,7 @@ jobs:
       - name: CDK deploy
         working-directory: cdk
         run: |
-          npm ci
+          npm install
           npm run build
           npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
 
