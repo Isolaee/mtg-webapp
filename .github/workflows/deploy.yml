@@ -145,10 +145,10 @@ jobs:
         with:
           targets: aarch64-unknown-linux-musl
 
-      - name: Install aarch64 musl cross-compiler
+      - name: Install Zig and cargo-zigbuild
         run: |
-          curl -sL https://musl.cc/aarch64-linux-musl-cross.tgz | tar -xz -C /opt
-          echo "/opt/aarch64-linux-musl-cross/bin" >> "$GITHUB_PATH"
+          pip3 install ziglang
+          cargo install cargo-zigbuild
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -158,9 +158,7 @@ jobs:
         working-directory: backend-rust
         env:
           SQLX_OFFLINE: "true"
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-musl-gcc
-          CC_aarch64_unknown_linux_musl: aarch64-linux-musl-gcc
-        run: cargo build --release --target aarch64-unknown-linux-musl --bin tcg-backend --bin seed_riftbound --bin hash_cards
+        run: cargo zigbuild --release --target aarch64-unknown-linux-musl --bin tcg-backend --bin seed_riftbound --bin hash_cards
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
