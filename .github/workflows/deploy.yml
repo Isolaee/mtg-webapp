@@ -143,10 +143,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-unknown-linux-musl
+          targets: aarch64-unknown-linux-gnu
 
-      - name: Install musl tools
-        run: sudo apt-get install -y musl-tools
+      - name: Install aarch64 cross toolchain
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -155,9 +155,10 @@ jobs:
       - name: Build Rust binaries
         working-directory: backend-rust
         env:
-          # SQLx runtime queries — no DB needed at compile time
           SQLX_OFFLINE: "true"
-        run: cargo build --release --target x86_64-unknown-linux-musl --bin tcg-backend --bin seed_riftbound --bin hash_cards
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+        run: cargo build --release --target aarch64-unknown-linux-gnu --bin tcg-backend --bin seed_riftbound --bin hash_cards
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -168,11 +169,11 @@ jobs:
 
       - name: Stage binaries in S3
         run: |
-          aws s3 cp backend-rust/target/x86_64-unknown-linux-musl/release/tcg-backend \
+          aws s3 cp backend-rust/target/aarch64-unknown-linux-gnu/release/tcg-backend \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/tcg-backend
-          aws s3 cp backend-rust/target/x86_64-unknown-linux-musl/release/seed_riftbound \
+          aws s3 cp backend-rust/target/aarch64-unknown-linux-gnu/release/seed_riftbound \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/seed_riftbound
-          aws s3 cp backend-rust/target/x86_64-unknown-linux-musl/release/hash_cards \
+          aws s3 cp backend-rust/target/aarch64-unknown-linux-gnu/release/hash_cards \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/hash_cards
           aws s3 cp database/mtg_card_db.db \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/mtg_card_db.db

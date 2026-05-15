@@ -150,10 +150,10 @@ export class TcgStack extends cdk.Stack {
     const instance = new ec2.Instance(this, 'Backend', {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      // Dynamic lookup: finds the latest Ubuntu 22.04 LTS AMI in whatever region is active.
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MICRO),
+      // Dynamic lookup: finds the latest Ubuntu 22.04 LTS ARM64 AMI in whatever region is active.
       machineImage: ec2.MachineImage.lookup({
-        name: 'ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*',
+        name: 'ubuntu/images/hvm-ssd*ubuntu-jammy-22.04-arm64-server-*',
         owners: ['099720109477'], // Canonical Ltd
       }),
       securityGroup: sg,
@@ -162,7 +162,7 @@ export class TcgStack extends cdk.Stack {
       userDataCausesReplacement: false, // user-data runs once at launch; don't replace on changes
       blockDevices: [{
         deviceName: '/dev/sda1',
-        volume: ec2.BlockDeviceVolume.ebs(20, {
+        volume: ec2.BlockDeviceVolume.ebs(8, {
           volumeType: ec2.EbsDeviceVolumeType.GP3,
           encrypted: true,
         }),
@@ -172,7 +172,7 @@ export class TcgStack extends cdk.Stack {
     });
 
     // ── Elastic IP ─────────────────────────────────────────────────────────
-    // Stable public IP — Cloudflare CNAME for the API origin points here.
+    // Stable public IP — Cloudflare A record for the API origin points here.
     const eip = new ec2.CfnEIP(this, 'BackendEip', {
       domain: 'vpc',
     });
