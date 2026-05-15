@@ -4,12 +4,16 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
+interface TcgStackProps extends cdk.StackProps {
+  certificate: acm.ICertificate;
+}
 
 export class TcgStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: TcgStackProps) {
     super(scope, id, props);
 
     const region = this.region;
@@ -192,6 +196,10 @@ export class TcgStack extends cdk.Stack {
 
     const distribution = new cloudfront.Distribution(this, 'Cdn', {
       comment: 'TCG website CDN',
+
+      domainNames: ['tcg-singularity.com', 'www.tcg-singularity.com'],
+      certificate: props.certificate,
+      minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
 
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(frontendBucket, {

@@ -88,9 +88,11 @@ jobs:
         run: |
           npm install
           npm run build
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ./node_modules/.bin/cdk bootstrap "aws://${ACCOUNT_ID}/us-east-1"
           ./node_modules/.bin/cdk bootstrap
-          # --force skips the confirmation prompt
-          ./node_modules/.bin/cdk destroy --force
+          # --force skips the confirmation prompt; --all destroys both TcgStack and TcgCertStack
+          ./node_modules/.bin/cdk destroy --all --force
 
       - name: Summary
         run: |
