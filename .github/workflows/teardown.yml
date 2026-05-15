@@ -33,6 +33,11 @@ jobs:
           BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
           AWS_REGION:    ${{ vars.AWS_REGION }}
         run: |
+          if [ -z "$INSTANCE_ID" ] || [ -z "$BACKUP_BUCKET" ]; then
+            echo "EC2_INSTANCE_ID or BACKUP_BUCKET not set — skipping backup (no deployed instance)."
+            exit 0
+          fi
+
           TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
           BACKUP_KEY="teardown-backup/mtg_card_db_${TIMESTAMP}.db"
 
