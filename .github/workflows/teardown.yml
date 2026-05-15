@@ -82,9 +82,9 @@ jobs:
         run: |
           npm install
           npm run build
-          npx cdk bootstrap
+          ./node_modules/.bin/cdk bootstrap
           # --force skips the confirmation prompt
-          npx cdk destroy --force
+          ./node_modules/.bin/cdk destroy --force
 
       - name: Summary
         run: |
