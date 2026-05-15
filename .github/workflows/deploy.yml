@@ -143,10 +143,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-unknown-linux-gnu
+          targets: aarch64-unknown-linux-musl
 
-      - name: Install aarch64 cross toolchain
-        run: sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Install aarch64 musl cross-compiler
+        run: |
+          curl -sL https://musl.cc/aarch64-linux-musl-cross.tgz | tar -xz -C /opt
+          echo "/opt/aarch64-linux-musl-cross/bin" >> "$GITHUB_PATH"
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -156,9 +158,9 @@ jobs:
         working-directory: backend-rust
         env:
           SQLX_OFFLINE: "true"
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
-        run: cargo build --release --target aarch64-unknown-linux-gnu --bin tcg-backend --bin seed_riftbound --bin hash_cards
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-musl-gcc
+          CC_aarch64_unknown_linux_musl: aarch64-linux-musl-gcc
+        run: cargo build --release --target aarch64-unknown-linux-musl --bin tcg-backend --bin seed_riftbound --bin hash_cards
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -169,11 +171,11 @@ jobs:
 
       - name: Stage binaries in S3
         run: |
-          aws s3 cp backend-rust/target/aarch64-unknown-linux-gnu/release/tcg-backend \
+          aws s3 cp backend-rust/target/aarch64-unknown-linux-musl/release/tcg-backend \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/tcg-backend
-          aws s3 cp backend-rust/target/aarch64-unknown-linux-gnu/release/seed_riftbound \
+          aws s3 cp backend-rust/target/aarch64-unknown-linux-musl/release/seed_riftbound \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/seed_riftbound
-          aws s3 cp backend-rust/target/aarch64-unknown-linux-gnu/release/hash_cards \
+          aws s3 cp backend-rust/target/aarch64-unknown-linux-musl/release/hash_cards \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/hash_cards
           aws s3 cp database/mtg_card_db.db \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/mtg_card_db.db
