@@ -181,7 +181,10 @@ export class TcgStack extends cdk.Stack {
     });
 
     // ── CloudFront ─────────────────────────────────────────────────────────
-    // S3 origin (frontend) uses OAC; EC2 origin (API) uses HTTP on port 80.
+    // Serves the frontend from S3 only. The API is accessed directly via the
+    // EIP — configure an A record in Cloudflare for api.yourdomain.com → EIP,
+    // then set REACT_APP_API_URL=https://api.yourdomain.com/api at build time.
+    // CloudFront cannot use a raw IP as an origin (AWS restriction).
     const oac = new cloudfront.S3OriginAccessControl(this, 'FrontendOac', {
       description: 'TCG frontend bucket OAC',
     });
@@ -189,7 +192,6 @@ export class TcgStack extends cdk.Stack {
     const distribution = new cloudfront.Distribution(this, 'Cdn', {
       comment: 'TCG website CDN',
 
-      // Default: serve React app from S3
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(frontendBucket, {
           originAccessControl: oac,
@@ -197,29 +199,6 @@ export class TcgStack extends cdk.Stack {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         compress: true,
-      },
-
-      // /api/* and /health: proxy to EC2 backend
-      additionalBehaviors: {
-        '/api/*': {
-          origin: new origins.HttpOrigin(eip.ref, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
-            httpPort: 80,
-          }),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-        },
-        '/health': {
-          origin: new origins.HttpOrigin(eip.ref, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
-            httpPort: 80,
-          }),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
-        },
       },
 
       defaultRootObject: 'index.html',
@@ -250,15 +229,15 @@ export class TcgStack extends cdk.Stack {
     // These values go into GitHub Actions secrets and the Cloudflare DNS record.
     new cdk.CfnOutput(this, 'ElasticIp', {
       value: eip.ref,
-      description: 'EC2 public IP — Cloudflare CNAME target for the API origin',
+      description: 'EC2 public IP — set Cloudflare A record: api.yourdomain.com → this IP',
     });
     new cdk.CfnOutput(this, 'CloudFrontDomain', {
       value: distribution.distributionDomainName,
-      description: 'CloudFront domain — set Cloudflare CNAME root @ → this value',
+      description: 'CloudFront domain — set Cloudflare CNAME: @ (root) → this value',
     });
     new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
       value: distribution.distributionId,
-      description: 'Used by GitHub Actions to invalidate the cache on deploy',
+      description: 'Used by GitHub Actions to invalidate the CloudFront cache on deploy',
     });
     new cdk.CfnOutput(this, 'FrontendBucketName', {
       value: frontendBucket.bucketName,
