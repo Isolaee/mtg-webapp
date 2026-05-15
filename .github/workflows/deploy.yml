@@ -174,6 +174,8 @@ jobs:
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/seed_riftbound
           aws s3 cp backend-rust/target/x86_64-unknown-linux-musl/release/hash_cards \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/hash_cards
+          aws s3 cp database/mtg_card_db.db \
+            s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/mtg_card_db.db
 
       - name: Deploy via SSM
         env:
@@ -194,6 +196,8 @@ jobs:
               "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/seed_riftbound /var/lib/tcg/seed_riftbound",
               "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/hash_cards      /var/lib/tcg/hash_cards",
               "chmod +x /var/lib/tcg/tcg-backend /var/lib/tcg/seed_riftbound /var/lib/tcg/hash_cards",
+              "test -f /var/lib/tcg/mtg_card_db.db || aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/mtg_card_db.db /var/lib/tcg/mtg_card_db.db",
+              "chown ubuntu:ubuntu /var/lib/tcg/mtg_card_db.db",
               "sudo systemctl restart tcg-backend",
               "sleep 3",
               "curl -sf http://localhost:8080/health || (sudo journalctl -u tcg-backend -n 30 --no-pager && exit 1)"
