@@ -183,6 +183,7 @@ jobs:
             --comment "Deploy tcg-backend from GitHub Actions" \
             --parameters commands='[
               "set -eu",
+              "export PATH=$PATH:/usr/local/bin",
               "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/tcg-backend    /var/lib/tcg/tcg-backend",
               "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/seed_riftbound /var/lib/tcg/seed_riftbound",
               "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/hash_cards      /var/lib/tcg/hash_cards",
