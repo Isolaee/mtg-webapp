@@ -124,7 +124,7 @@ export class TcgStack extends cdk.Stack {
       'NGINX_EOF',
       'ln -sf /etc/nginx/sites-available/tcg /etc/nginx/sites-enabled/tcg',
       'rm -f /etc/nginx/sites-enabled/default',
-      'nginx -t && systemctl enable nginx && systemctl start nginx',
+      'nginx -t && systemctl enable nginx && systemctl restart nginx',
 
       // Systemd service for the Rust backend (binary not yet present — that's CI's job)
       'cat > /etc/systemd/system/tcg-backend.service << \'SVC_EOF\'',
