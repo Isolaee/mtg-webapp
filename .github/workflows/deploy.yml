@@ -59,7 +59,11 @@ jobs:
           if [ "$STACK_STATUS" = "DOES_NOT_EXIST" ] || [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
             if aws s3api head-bucket --bucket "$BACKUP_BUCKET" 2>/dev/null; then
               echo "Removing orphaned backup bucket $BACKUP_BUCKET..."
-              aws s3 rb "s3://${BACKUP_BUCKET}" --force
+              aws s3 rm "s3://${BACKUP_BUCKET}/" --recursive
+              aws s3api delete-bucket --bucket "$BACKUP_BUCKET"
+              echo "Bucket deleted."
+            else
+              echo "Backup bucket does not exist, nothing to clean up."
             fi
           fi
 
