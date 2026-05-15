@@ -1,0 +1,39 @@
+name: Pause (stop EC2 to cut costs)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "pause" to confirm stopping the backend instance'
+        required: true
+
+jobs:
+  pause:
+    name: Stop EC2 instance
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm == 'pause' }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Stop EC2 instance
+        env:
+          INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+        run: |
+          echo "Stopping instance $INSTANCE_ID..."
+          aws ec2 stop-instances --instance-ids "$INSTANCE_ID"
+          aws ec2 wait instance-stopped --instance-ids "$INSTANCE_ID"
+          echo "Instance stopped."
+          echo ""
+          echo "Remaining costs while paused:"
+          echo "  EBS 20 GB GP3  ~\$1.60/mo"
+          echo "  Elastic IP     ~\$3.65/mo (charged when instance is stopped)"
+          echo "  Secrets Manager ~\$0.40/mo"
+          echo "  Total:         ~\$5.65/mo"
+          echo ""
+          echo "Run the 'Resume' workflow to bring the backend back up."
+          echo "Run the 'Teardown' workflow to destroy everything (\$0/mo)."
