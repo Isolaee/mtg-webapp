@@ -34,7 +34,7 @@ export class TcgStack extends cdk.Stack {
     // No port 22 — all remote access goes through SSM Session Manager.
     const sg = new ec2.SecurityGroup(this, 'BackendSg', {
       vpc,
-      description: 'TCG backend — HTTP/HTTPS only; SSH via SSM',
+      description: 'TCG backend - HTTP/HTTPS only; SSH via SSM',
     });
     sg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80),  'HTTP from CloudFront');
     sg.addIngressRule(ec2.Peer.anyIpv6(), ec2.Port.tcp(80),  'HTTP from CloudFront (IPv6)');
