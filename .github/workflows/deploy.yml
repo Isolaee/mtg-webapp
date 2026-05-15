@@ -33,6 +33,36 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ vars.AWS_REGION }}
 
+      - name: Clean up any previous failed stack
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BACKUP_BUCKET="tcg-db-backups-${ACCOUNT_ID}"
+
+          STACK_STATUS=$(aws cloudformation describe-stacks \
+            --stack-name TcgStack \
+            --query "Stacks[0].StackStatus" \
+            --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+          echo "Stack status: $STACK_STATUS"
+
+          # ROLLBACK_COMPLETE stacks must be deleted before CDK can redeploy
+          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+            echo "Deleting ROLLBACK_COMPLETE stack..."
+            aws cloudformation delete-stack --stack-name TcgStack
+            aws cloudformation wait stack-delete-complete --stack-name TcgStack
+            echo "Stack deleted."
+          fi
+
+          # If the stack is gone, the RETAIN backup bucket may be orphaned.
+          # Safe to delete here — it was created by a failed deploy with no real data.
+          # Once real backups exist, remove this block and use 'cdk import' instead.
+          if [ "$STACK_STATUS" = "DOES_NOT_EXIST" ] || [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+            if aws s3api head-bucket --bucket "$BACKUP_BUCKET" 2>/dev/null; then
+              echo "Removing orphaned backup bucket $BACKUP_BUCKET..."
+              aws s3 rb "s3://${BACKUP_BUCKET}" --force
+            fi
+          fi
+
       - name: CDK bootstrap + deploy
         working-directory: cdk
         run: |
