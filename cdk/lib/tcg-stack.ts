@@ -79,6 +79,7 @@ export class TcgStack extends cdk.Stack {
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
       'set -euo pipefail',
+      'export DEBIAN_FRONTEND=noninteractive',
       'apt-get update -y',
       'apt-get install -y nginx awscli',
 
