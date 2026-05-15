@@ -1,9 +1,7 @@
 name: Build and Deploy
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch: # allow manual runs from the GitHub UI
+  workflow_dispatch:
 
 concurrency:
   group: deploy
