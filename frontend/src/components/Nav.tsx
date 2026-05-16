@@ -81,7 +81,7 @@ const Nav: React.FC = () => {
 
         {/* Ko-Fi support link */}
         <a
-          href="https://ko-fi.com/YOURUSERNAME"
+          href="https://ko-fi.com/oracle_singularity"
           target="_blank"
           rel="noopener noreferrer"
           style={{

@@ -2,8 +2,7 @@ import React from "react";
 import AdSlot from "./AdSlot";
 import { T } from "../theme";
 
-// Replace YOURUSERNAME with your Ko-Fi username
-const KOFI_URL = "https://ko-fi.com/YOURUSERNAME";
+const KOFI_URL = "https://ko-fi.com/oracle_singularity";
 const SLOT_ID_FOOTER = "XXXXXXXXXX"; // replace with AdSense footer ad unit slot ID
 
 const Footer: React.FC = () => (
