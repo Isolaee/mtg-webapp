@@ -11,6 +11,8 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -32,21 +34,7 @@ jobs:
           INSTANCE_ID: ${{ steps.instance.outputs.id }}
           AWS_REGION:  ${{ vars.AWS_REGION }}
         run: |
-          # Base64-encode the backup script so it can be passed cleanly through SSM JSON
-          BACKUP_SCRIPT=$(base64 -w 0 << 'SCRIPT'
-#!/bin/bash
-set -euo pipefail
-DB=/var/lib/tcg/mtg_card_db.db
-TS=$(date -u +%Y-%m-%dT%H-%M-%SZ)
-TMP=/var/lib/tcg/backups/backup_${TS}.db
-ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-BUCKET=tcg-db-backups-${ACCOUNT}
-sqlite3 "$DB" ".backup $TMP"
-aws s3 cp "$TMP" "s3://${BUCKET}/daily/${TS}.db"
-rm -f "$TMP"
-echo "Backup uploaded: s3://${BUCKET}/daily/${TS}.db"
-SCRIPT
-          )
+          BACKUP_SCRIPT=$(base64 -w 0 scripts/backup-db.sh)
 
           COMMAND_ID=$(aws ssm send-command \
             --region "$AWS_REGION" \
