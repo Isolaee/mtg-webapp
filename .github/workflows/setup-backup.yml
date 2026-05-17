@@ -1,0 +1,112 @@
+name: Set up daily DB backup (install timer on EC2)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    name: Install backup-db timer on EC2
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ vars.AWS_REGION }}
+
+      - name: Get EC2 instance ID from CloudFormation
+        id: instance
+        run: |
+          INSTANCE_ID=$(aws cloudformation describe-stacks \
+            --stack-name TcgStack \
+            --query "Stacks[0].Outputs[?OutputKey=='InstanceId'].OutputValue" \
+            --output text)
+          echo "id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Install backup script and systemd timer via SSM
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.id }}
+          AWS_REGION:  ${{ vars.AWS_REGION }}
+        run: |
+          # Base64-encode the backup script so it can be passed cleanly through SSM JSON
+          BACKUP_SCRIPT=$(base64 -w 0 << 'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+DB=/var/lib/tcg/mtg_card_db.db
+TS=$(date -u +%Y-%m-%dT%H-%M-%SZ)
+TMP=/var/lib/tcg/backups/backup_${TS}.db
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+BUCKET=tcg-db-backups-${ACCOUNT}
+sqlite3 "$DB" ".backup $TMP"
+aws s3 cp "$TMP" "s3://${BUCKET}/daily/${TS}.db"
+rm -f "$TMP"
+echo "Backup uploaded: s3://${BUCKET}/daily/${TS}.db"
+SCRIPT
+          )
+
+          COMMAND_ID=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Install backup-db timer from GitHub Actions" \
+            --timeout-seconds 300 \
+            --parameters commands='[
+              "set -eu",
+              "DEBIAN_FRONTEND=noninteractive apt-get install -y sqlite3",
+              "echo '"$BACKUP_SCRIPT"' | base64 -d > /usr/local/bin/backup-db.sh",
+              "chmod +x /usr/local/bin/backup-db.sh",
+              "printf \"[Unit]\\nDescription=TCG SQLite daily backup to S3\\n[Service]\\nType=oneshot\\nUser=ubuntu\\nExecStart=/usr/local/bin/backup-db.sh\\n\" > /etc/systemd/system/backup-db.service",
+              "printf \"[Unit]\\nDescription=Run TCG SQLite backup daily at 03:00 UTC\\n[Timer]\\nOnCalendar=*-*-* 03:00:00 UTC\\nRandomizedDelaySec=600\\nPersistent=true\\n[Install]\\nWantedBy=timers.target\\n\" > /etc/systemd/system/backup-db.timer",
+              "systemctl daemon-reload",
+              "systemctl enable --now backup-db.timer",
+              "systemctl list-timers backup-db.timer --no-pager",
+              "echo Running test backup...",
+              "systemctl start backup-db.service",
+              "journalctl -u backup-db.service -n 20 --no-pager"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM command ID: $COMMAND_ID"
+
+          for i in $(seq 1 20); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+
+            echo "[$i/20] Status: $STATUS"
+
+            if [ "$STATUS" = "Success" ]; then
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardOutputContent" \
+                --output text
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "TimedOut" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "=== STDOUT ==="
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardOutputContent" \
+                --output text
+              echo "=== STDERR ==="
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardErrorContent" \
+                --output text
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+          echo "Timed out waiting for SSM command"
+          exit 1

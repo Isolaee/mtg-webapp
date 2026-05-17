@@ -85,7 +85,7 @@ export class TcgStack extends cdk.Stack {
       'set -euo pipefail',
       'export DEBIAN_FRONTEND=noninteractive',
       'apt-get update -y',
-      'apt-get install -y nginx awscli',
+      'apt-get install -y nginx awscli sqlite3',
 
       // SSM agent (snap version works on Ubuntu 22.04 out of the box)
       'snap install amazon-ssm-agent --classic',
@@ -148,6 +148,45 @@ export class TcgStack extends cdk.Stack {
       'SVC_EOF',
       'systemctl daemon-reload',
       'systemctl enable tcg-backend',
+
+      // Daily SQLite backup script + systemd timer
+      'cat > /usr/local/bin/backup-db.sh << \'BACKUP_EOF\'',
+      '#!/bin/bash',
+      'set -euo pipefail',
+      'DB="/var/lib/tcg/mtg_card_db.db"',
+      'TS=$(date -u +%Y-%m-%dT%H-%M-%SZ)',
+      'TMP="/var/lib/tcg/backups/backup_${TS}.db"',
+      'ACCOUNT=$(aws sts get-caller-identity --query Account --output text)',
+      'BUCKET="tcg-db-backups-${ACCOUNT}"',
+      'sqlite3 "$DB" ".backup $TMP"',
+      'aws s3 cp "$TMP" "s3://${BUCKET}/daily/${TS}.db"',
+      'rm -f "$TMP"',
+      'echo "Backup uploaded: s3://${BUCKET}/daily/${TS}.db"',
+      'BACKUP_EOF',
+      'chmod +x /usr/local/bin/backup-db.sh',
+
+      'cat > /etc/systemd/system/backup-db.service << \'BSVC_EOF\'',
+      '[Unit]',
+      'Description=TCG SQLite daily backup to S3',
+      '[Service]',
+      'Type=oneshot',
+      'User=ubuntu',
+      'ExecStart=/usr/local/bin/backup-db.sh',
+      'BSVC_EOF',
+
+      'cat > /etc/systemd/system/backup-db.timer << \'BTMR_EOF\'',
+      '[Unit]',
+      'Description=Run TCG SQLite backup daily at 03:00 UTC',
+      '[Timer]',
+      'OnCalendar=*-*-* 03:00:00 UTC',
+      'RandomizedDelaySec=600',
+      'Persistent=true',
+      '[Install]',
+      'WantedBy=timers.target',
+      'BTMR_EOF',
+
+      'systemctl daemon-reload',
+      'systemctl enable --now backup-db.timer',
     );
 
     // ── EC2 instance ───────────────────────────────────────────────────────
