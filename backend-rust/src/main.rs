@@ -47,6 +47,8 @@ async fn main() -> anyhow::Result<()> {
             "http://localhost:3000".parse::<HeaderValue>().unwrap(),
             "capacitor://localhost".parse::<HeaderValue>().unwrap(),
             "https://localhost".parse::<HeaderValue>().unwrap(),
+            "https://tcg-singularity.com".parse::<HeaderValue>().unwrap(),
+            "https://www.tcg-singularity.com".parse::<HeaderValue>().unwrap(),
         ])
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
         .allow_headers([axum::http::header::AUTHORIZATION, axum::http::header::CONTENT_TYPE]);
