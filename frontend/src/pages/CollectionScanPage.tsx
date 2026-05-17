@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { T, btn, panel } from "../theme";
 import { ScanMatch, scanCard, addToCollection } from "../api";
 
@@ -7,6 +7,8 @@ const SCAN_INTERVAL_MS = 1800;
 
 const CollectionScanPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const preferredGame = (new URLSearchParams(location.search).get("game") ?? null) as "mtg" | "riftbound" | null;
 
   // Camera
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,8 +50,10 @@ const CollectionScanPage: React.FC = () => {
       const results = await scanCard(base64);
       if (results.length > 0) {
         setMatches(results);
-        // Auto-select top result only if user hasn't manually chosen one
-        if (!manuallyPicked) setPicked(results[0]);
+        if (!manuallyPicked) {
+          const preferred = preferredGame ? results.find((r) => r.game === preferredGame) : null;
+          setPicked(preferred ?? results[0]);
+        }
       }
     } catch {
       // silently ignore individual scan failures
@@ -57,7 +61,7 @@ const CollectionScanPage: React.FC = () => {
       busyRef.current = false;
       setScanning(false);
     }
-  }, [manuallyPicked]);
+  }, [manuallyPicked, preferredGame]);
 
   // Restart interval whenever captureAndScan reference changes (manuallyPicked toggle)
   useEffect(() => {
@@ -133,6 +137,23 @@ const CollectionScanPage: React.FC = () => {
           ← Back
         </button>
         <h1 style={{ margin: 0, fontSize: "1.4em" }}>Scan Card</h1>
+        {preferredGame && (
+          <span
+            style={{
+              fontSize: 11,
+              padding: "2px 8px",
+              borderRadius: 10,
+              background: preferredGame === "riftbound" ? `${T.purple}22` : `${T.blue}22`,
+              color: preferredGame === "riftbound" ? T.purple : T.blue,
+              border: `1px solid ${preferredGame === "riftbound" ? T.purple : T.blue}55`,
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              fontWeight: 600,
+            }}
+          >
+            {preferredGame === "riftbound" ? "Riftbound" : "MTG"}
+          </span>
+        )}
         {scanning && (
           <span style={{ marginLeft: "auto", fontSize: 12, color: T.textDim, letterSpacing: "0.04em" }}>
             scanning…

@@ -249,7 +249,7 @@ const CollectionPage: React.FC = () => {
 
           {Capacitor.isNativePlatform() && (
             <button
-              onClick={() => navigate("/collection/scan")}
+              onClick={() => navigate(`/collection/scan?game=${tab}`)}
               style={{ ...btn.ghost(), fontSize: "0.8em", padding: "0.45em 1.1em" }}
             >
               Scan Card
