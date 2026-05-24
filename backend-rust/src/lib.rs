@@ -4,3 +4,4 @@ pub mod models;
 pub mod phash;
 pub mod routes;
 pub mod scrapers;
+pub mod upgrades;
