@@ -8,10 +8,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Card,
   MtgDeckSummary,
+  fetchCards,
   fetchMtgDeckList,
   fetchMtgDeck,
   saveMtgDeck,
 } from "../../api";
+import UpgradesModal from "../../components/UpgradesModal";
 import { useAuth } from "../../context/AuthContext";
 import { T } from "../../theme";
 
@@ -39,6 +41,7 @@ const DeckBuilderPage: React.FC = () => {
   const [loadOpen, setLoadOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [upgradesOpen, setUpgradesOpen] = useState(false);
 
   useEffect(() => {
     const preload = searchParams.get("load");
@@ -164,6 +167,38 @@ const DeckBuilderPage: React.FC = () => {
     setCommander(card);
   };
 
+  const handleApplySwap = async (cutName: string, addName: string) => {
+    // Look up the add card so the deck row carries full data (mana cost, type, etc.).
+    let addCard: Card | undefined;
+    try {
+      const matches = await fetchCards({ name: addName });
+      addCard = matches.find((c) => c.name.toLowerCase() === addName.toLowerCase());
+    } catch {
+      // Fall back to a name-only stub — Save will still persist the change.
+      addCard = undefined;
+    }
+    const stub: Card = addCard ?? { name: addName };
+    setDeck((prev) => {
+      const cutIdx = prev.findIndex((e) => e.card.name === cutName);
+      let next = prev;
+      if (cutIdx !== -1) {
+        if (prev[cutIdx].count > 1) {
+          next = [...prev];
+          next[cutIdx] = { ...next[cutIdx], count: next[cutIdx].count - 1 };
+        } else {
+          next = prev.filter((_, i) => i !== cutIdx);
+        }
+      }
+      const addIdx = next.findIndex((e) => e.card.name === stub.name);
+      if (addIdx !== -1) {
+        const u = [...next];
+        u[addIdx] = { ...u[addIdx], count: u[addIdx].count + 1 };
+        return u;
+      }
+      return [...next, { card: stub, count: 1 }];
+    });
+  };
+
   const handleSave = async () => {
     if (!deckName.trim()) return;
     try {
@@ -268,6 +303,23 @@ const DeckBuilderPage: React.FC = () => {
             }}
           >
             Analyze
+          </button>
+        )}
+        {username && deckName.trim() && (
+          <button
+            onClick={() => setUpgradesOpen(true)}
+            style={{
+              padding: "0.5em 1.2em",
+              background: "transparent",
+              color: T.gold,
+              border: `1px solid ${T.gold}66`,
+              borderRadius: 4,
+              fontWeight: 600,
+              fontSize: "0.85em",
+              cursor: "pointer",
+            }}
+          >
+            Suggest Upgrades
           </button>
         )}
         <label
@@ -378,6 +430,15 @@ const DeckBuilderPage: React.FC = () => {
 
       <DeckStats cards={allCards} />
       <StackVisualizer cards={allCards} format={format} commanderName={commander?.name ?? ""} />
+
+      <UpgradesModal
+        isOpen={upgradesOpen}
+        onClose={() => setUpgradesOpen(false)}
+        deckName={deckName}
+        format={format}
+        isEmpty={deck.length === 0}
+        onApplySwap={handleApplySwap}
+      />
     </div>
   );
 };

@@ -424,6 +424,60 @@ export const precomputeTags = async (): Promise<void> => {
   });
 };
 
+// ── Upgrade Proposals ────────────────────────────────────────────────────────
+
+export type SwapKind = "strict" | "sidegrade";
+
+export interface UpgradeSwap {
+  cut: string;
+  add: string;
+  kind: SwapKind;
+  reason: string;
+  edhrecInclusionPct?: number;
+}
+
+export interface UpgradeHolistic {
+  topStrict: UpgradeSwap[];
+  topSidegrade: UpgradeSwap[];
+}
+
+export interface ColorSourceAdvice {
+  color: string;
+  currentSources: number;
+  neededSources: number;
+  maxPipDemand: number;
+}
+
+export interface ManaReport {
+  format: string;
+  recommendedTotalLands: number;
+  currentTotalLands: number;
+  avgMv: number;
+  rampCount: number;
+  perColor: ColorSourceAdvice[];
+  suggestedCuts: string[];
+  suggestedAdds: string[];
+}
+
+export interface UpgradesResponse {
+  format: string;
+  swaps: UpgradeSwap[];
+  holistic: UpgradeHolistic;
+  landAdvice: ManaReport;
+}
+
+export const fetchUpgrades = async (
+  deckName: string,
+  format?: string,
+): Promise<UpgradesResponse> => {
+  const response = await axios.post<UpgradesResponse>(
+    `${API_BASE_URL}/upgrades`,
+    { deckName, format },
+    { headers: authHeaders() },
+  );
+  return response.data;
+};
+
 export const scanCard = async (imageBase64: string): Promise<ScanMatch[]> => {
   const byteString = atob(imageBase64);
   const bytes = new Uint8Array(byteString.length);
