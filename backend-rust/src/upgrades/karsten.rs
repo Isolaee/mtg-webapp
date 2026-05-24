@@ -31,6 +31,7 @@ pub struct ManaCard {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ColorSourceAdvice {
     pub color: char,
     pub current_sources: u32,
@@ -39,6 +40,7 @@ pub struct ColorSourceAdvice {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ManaReport {
     pub format: String,
     pub recommended_total_lands: u32,
