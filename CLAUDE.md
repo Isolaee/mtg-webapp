@@ -92,7 +92,7 @@ Run on connected device or emulator:
 npx cap run android
 ```
 
-**API URL for Android build:** edit `frontend/.env.production` and set `REACT_APP_API_URL` to your deployed server address before `npm run build`. The Android app cannot reach `localhost`.
+**API URL for Android build:** set `REACT_APP_API_URL=https://api.tcg-singularity.com/api` in the shell before `npm run build` (the Android app cannot reach `localhost`). For web prod deploys the value comes from the GitHub Actions repo variable `REACT_APP_API_URL` (environment: production) — there is no `.env.production` file.
 
 Re-run `npm run build && npx cap sync android` after every React change.
 
@@ -148,7 +148,7 @@ database/
 
 ## Conventions
 
-- **Frontend base URL:** `frontend/src/api.tsx` — reads `REACT_APP_API_URL` env var, falls back to `http://localhost:8080/api`. Set in `.env.development` / `.env.production`.
+- **Frontend base URL:** `frontend/src/api.tsx` — reads `REACT_APP_API_URL` env var, falls back to `http://localhost:8080/api`. Local dev value lives in `.env.development`; the prod value is the GitHub Actions repo variable `REACT_APP_API_URL` (env: production) — no `.env.production` file in the repo.
 - **SQLx pattern:** Use runtime `sqlx::query_as::<_, T>(&sql)` — NOT `query_as!` macros. The original SQLite schema has loose types requiring `CAST(cmc AS REAL)` etc. in SELECT queries.
 - **Serde renames:** MTG `Card` struct uses `#[serde(rename)]` to map lowercase DB columns to camelCase JSON (`cardtype` → `cardType`, `oracletext` → `oracleText`). Keep this pattern for new MTG fields.
 - **Riftbound DB columns** are snake_case and map directly (no renaming needed).
