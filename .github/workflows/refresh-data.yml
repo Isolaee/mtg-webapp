@@ -1,0 +1,91 @@
+name: Refresh Data (umbrella)
+
+# One-click trigger for every on-demand data fetch the backend supports.
+# Default tick-boxes refresh the three fast/recurring jobs (semantic tags,
+# Scryfall prices/legalities, EDHREC commander synergies). The two
+# expensive ones (Riftbound seed, MTG perceptual hashes) are off by default
+# — flip them on when you need them. Each enabled step runs serially via
+# AWS SSM on the production EC2 instance.
+
+on:
+  workflow_dispatch:
+    inputs:
+      precompute_tags:
+        description: "Precompute semantic tags (MTG + Riftbound) — fast"
+        type: boolean
+        default: true
+      enrich_scryfall:
+        description: "Refresh Scryfall prices + legalities — ~5 min, 150MB download"
+        type: boolean
+        default: true
+      fetch_edhrec:
+        description: "Refresh EDHREC commander synergies — depends on commander count"
+        type: boolean
+        default: true
+      seed_riftbound:
+        description: "Re-seed Riftbound cards from RiftScribe — rare, do after new sets"
+        type: boolean
+        default: false
+      hash_cards:
+        description: "Recompute MTG card pHashes — up to 2 hours"
+        type: boolean
+        default: false
+
+jobs:
+  refresh:
+    name: Run enabled data fetches on EC2
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 180
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ vars.AWS_REGION }}
+
+      - name: Get EC2 instance ID from CloudFormation
+        id: instance
+        run: |
+          INSTANCE_ID=$(aws cloudformation describe-stacks \
+            --stack-name TcgStack \
+            --query "Stacks[0].Outputs[?OutputKey=='InstanceId'].OutputValue" \
+            --output text)
+          echo "id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: precompute_tags
+        if: ${{ inputs.precompute_tags }}
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.id }}
+          AWS_REGION:  ${{ vars.AWS_REGION }}
+        run: .github/workflows/scripts/ssm-run-binary.sh precompute_tags 30 24
+
+      - name: enrich_scryfall
+        if: ${{ inputs.enrich_scryfall }}
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.id }}
+          AWS_REGION:  ${{ vars.AWS_REGION }}
+        run: .github/workflows/scripts/ssm-run-binary.sh enrich_scryfall 30 60
+
+      - name: fetch_edhrec
+        if: ${{ inputs.fetch_edhrec }}
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.id }}
+          AWS_REGION:  ${{ vars.AWS_REGION }}
+        run: .github/workflows/scripts/ssm-run-binary.sh fetch_edhrec 30 60
+
+      - name: seed_riftbound
+        if: ${{ inputs.seed_riftbound }}
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.id }}
+          AWS_REGION:  ${{ vars.AWS_REGION }}
+        run: .github/workflows/scripts/ssm-run-binary.sh seed_riftbound 30 24
+
+      - name: hash_cards
+        if: ${{ inputs.hash_cards }}
+        env:
+          INSTANCE_ID: ${{ steps.instance.outputs.id }}
+          AWS_REGION:  ${{ vars.AWS_REGION }}
+        run: .github/workflows/scripts/ssm-run-binary.sh hash_cards 30 240

@@ -165,7 +165,7 @@ jobs:
         working-directory: backend-rust
         env:
           SQLX_OFFLINE: "true"
-        run: cargo zigbuild --release --target aarch64-unknown-linux-musl --bin tcg-backend --bin seed_riftbound --bin hash_cards
+        run: cargo zigbuild --release --target aarch64-unknown-linux-musl --bin tcg-backend --bin seed_riftbound --bin hash_cards --bin precompute_tags --bin enrich_scryfall --bin fetch_edhrec
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -176,12 +176,10 @@ jobs:
 
       - name: Stage binaries in S3
         run: |
-          aws s3 cp backend-rust/target/aarch64-unknown-linux-musl/release/tcg-backend \
-            s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/tcg-backend
-          aws s3 cp backend-rust/target/aarch64-unknown-linux-musl/release/seed_riftbound \
-            s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/seed_riftbound
-          aws s3 cp backend-rust/target/aarch64-unknown-linux-musl/release/hash_cards \
-            s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/hash_cards
+          for bin in tcg-backend seed_riftbound hash_cards precompute_tags enrich_scryfall fetch_edhrec; do
+            aws s3 cp "backend-rust/target/aarch64-unknown-linux-musl/release/$bin" \
+              "s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/$bin"
+          done
           aws s3 cp database/mtg_card_db.db \
             s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/mtg_card_db.db
 
@@ -200,10 +198,7 @@ jobs:
               "set -eu",
               "export PATH=$PATH:/usr/local/bin",
               "aws --version 2>/dev/null || (DEBIAN_FRONTEND=noninteractive apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y awscli)",
-              "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/tcg-backend    /var/lib/tcg/tcg-backend",
-              "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/seed_riftbound /var/lib/tcg/seed_riftbound",
-              "aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/hash_cards      /var/lib/tcg/hash_cards",
-              "chmod +x /var/lib/tcg/tcg-backend /var/lib/tcg/seed_riftbound /var/lib/tcg/hash_cards",
+              "for bin in tcg-backend seed_riftbound hash_cards precompute_tags enrich_scryfall fetch_edhrec; do aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/$bin /var/lib/tcg/$bin; chmod +x /var/lib/tcg/$bin; done",
               "test -f /var/lib/tcg/mtg_card_db.db || aws s3 cp s3://'"$FRONTEND_BUCKET"'/deploy/mtg_card_db.db /var/lib/tcg/mtg_card_db.db",
               "chown ubuntu:ubuntu /var/lib/tcg/mtg_card_db.db",
               "sudo systemctl restart tcg-backend",
