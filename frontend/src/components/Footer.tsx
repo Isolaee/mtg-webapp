@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import AdSlot from "./AdSlot";
 import { T } from "../theme";
 
@@ -28,9 +29,15 @@ const Footer: React.FC = () => (
     >
       ♥ Support TCG Builder on Ko-Fi
     </a>
-    <p style={{ color: T.textDim, fontSize: 11, margin: 0 }}>
-      © {new Date().getFullYear()} TCG Builder
-    </p>
+    <div style={{ display: "flex", gap: "1em", alignItems: "center" }}>
+      <Link to="/privacy" style={{ color: T.textDim, fontSize: 11, textDecoration: "none" }}>
+        Privacy Policy
+      </Link>
+      <span style={{ color: T.textDim, fontSize: 11 }}>·</span>
+      <p style={{ color: T.textDim, fontSize: 11, margin: 0 }}>
+        © {new Date().getFullYear()} TCG Builder
+      </p>
+    </div>
   </footer>
 );
 
