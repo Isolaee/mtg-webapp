@@ -149,10 +149,12 @@ async fn handle_propose_upgrades(
         _ => HashMap::new(),
     };
 
-    let report = build_report(&deck_engine_cards, &candidate_engine_cards, &edhrec, 5, &format);
+    let report = build_report(&deck_engine_cards, &candidate_engine_cards, &edhrec, 10, &format);
 
     // Land advice — bolt Karsten onto the response when we have the data.
-    let mana_cards = build_mana_cards(&deck_cards_raw, &deck_tag_cache);
+    // Use enriched card details so cmc/cardtype are populated even when the
+    // saved deck blob only carries card names.
+    let mana_cards = build_mana_cards(&deck_cards_raw, &deck_card_details, &deck_tag_cache);
     let land_advice = analyze_mana_base(&mana_cards, &format);
 
     Json(json!({
@@ -165,30 +167,32 @@ async fn handle_propose_upgrades(
 }
 
 /// Build ManaCard inputs for the Karsten advisor from the raw deck JSON
-/// rows (one row per copy in the deck blob).
+/// (one entry per copy) augmented with enriched details from `deck_card_details`.
+/// Falls back to the raw row when the card isn't in our DB.
 fn build_mana_cards(
     deck_cards_raw: &[serde_json::Value],
+    deck_card_details: &HashMap<String, serde_json::Value>,
     deck_tag_cache: &HashMap<String, Vec<String>>,
 ) -> Vec<ManaCard> {
-    let mut counts: HashMap<String, (serde_json::Value, u32)> = HashMap::new();
+    let mut counts: HashMap<String, u32> = HashMap::new();
     for card in deck_cards_raw {
         let Some(name) = card.get("name").and_then(|v| v.as_str()) else {
             continue;
         };
-        counts
-            .entry(name.to_string())
-            .and_modify(|(_, q)| *q += 1)
-            .or_insert_with(|| (card.clone(), 1));
+        *counts.entry(name.to_string()).or_insert(0) += 1;
     }
     counts
         .into_iter()
-        .map(|(name, (card, qty))| {
+        .map(|(name, qty)| {
+            // Prefer the enriched detail (has cmc/cardtype) over the raw blob row.
+            let card = deck_card_details
+                .get(&name)
+                .cloned()
+                .unwrap_or_else(|| serde_json::json!({"name": &name}));
             let mana_cost = card.get("manacost").and_then(|v| v.as_str()).unwrap_or("").to_string();
             let cmc = card.get("cmc").and_then(|v| v.as_f64()).unwrap_or(0.0) as u8;
             let cardtype = card.get("cardtype").and_then(|v| v.as_str()).unwrap_or("");
             let is_land = cardtype.to_lowercase().contains("land");
-            // For lands, derive produced colors from color_identity (best guess
-            // without enrichment-supplied produces_mana data).
             let produces: Vec<char> = if is_land {
                 card.get("coloridentity")
                     .and_then(|v| v.as_str())

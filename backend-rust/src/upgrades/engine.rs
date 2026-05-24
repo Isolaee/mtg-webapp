@@ -173,6 +173,12 @@ pub fn split_keyword_tags(tags: &HashSet<String>) -> HashSet<String> {
 
 // ── Predicates ──────────────────────────────────────────────────────────────
 
+fn is_land_type(primary_type: &str) -> bool {
+    // Primary type is lowercased by primary_type(). "land" covers "Land —
+    // Plains" etc.; "basic" covers "Basic Land — Plains".
+    matches!(primary_type, "land" | "basic")
+}
+
 fn is_pip_subset(candidate: &HashMap<char, u8>, deck: &HashMap<char, u8>) -> bool {
     for (color, c_count) in candidate {
         let d_count = deck.get(color).copied().unwrap_or(0);
@@ -212,6 +218,16 @@ pub fn is_strict_upgrade(deck_card: &EngineCard, candidate: &EngineCard) -> bool
         return false;
     }
     if !candidate.is_legal {
+        return false;
+    }
+    // Lands need color-production parity that the spell predicate doesn't
+    // model — defer them entirely to the Karsten advisor.
+    if is_land_type(&deck_card.primary_type) || is_land_type(&candidate.primary_type) {
+        return false;
+    }
+    // Without any tags on the deck card we have no idea what it does, so
+    // we can't safely call anything else "the same effect at lower cost".
+    if deck_card.tags.is_empty() {
         return false;
     }
     if candidate.primary_type != deck_card.primary_type {
@@ -272,6 +288,12 @@ pub fn is_sidegrade(deck_card: &EngineCard, candidate: &EngineCard) -> bool {
         return false;
     }
     if !candidate.is_legal {
+        return false;
+    }
+    if is_land_type(&deck_card.primary_type) || is_land_type(&candidate.primary_type) {
+        return false;
+    }
+    if deck_card.tags.is_empty() {
         return false;
     }
     if candidate.primary_type != deck_card.primary_type {
@@ -383,7 +405,15 @@ pub fn build_engine_card(row: &Value, tags: &[String], is_legal: bool) -> Engine
         .and_then(|s| s.parse::<i32>().ok());
     let oracle_text = row.get("oracletext").and_then(|v| v.as_str()).unwrap_or("");
     let magnitudes = extract_magnitudes(oracle_text);
-    let tag_set: HashSet<String> = tags.iter().cloned().collect();
+    // Filter out structural `key:value` tags (cmc:3-4, color:U, type:instant,
+    // subtype:dragon, ci:U). Those duplicate fields we already compare via
+    // dedicated predicate steps; including them would make the tag-superset
+    // check fail any time CMC differs — i.e. exactly when we want it to pass.
+    let tag_set: HashSet<String> = tags
+        .iter()
+        .filter(|t| !t.contains(':'))
+        .cloned()
+        .collect();
     let keyword_tags = split_keyword_tags(&tag_set);
 
     EngineCard {
@@ -474,11 +504,30 @@ pub fn build_report(
 
 fn sort_by_inclusion(swaps: &mut [Swap]) {
     swaps.sort_by(|a, b| {
-        b.edhrec_inclusion_pct
-            .unwrap_or(0.0)
-            .partial_cmp(&a.edhrec_inclusion_pct.unwrap_or(0.0))
-            .unwrap_or(std::cmp::Ordering::Equal)
+        // EDHREC inclusion first (higher = better).
+        let a_inc = a.edhrec_inclusion_pct.unwrap_or(0.0);
+        let b_inc = b.edhrec_inclusion_pct.unwrap_or(0.0);
+        match b_inc.partial_cmp(&a_inc).unwrap_or(std::cmp::Ordering::Equal) {
+            std::cmp::Ordering::Equal => {
+                // Tiebreak: swaps whose reason starts with an explicit "N less
+                // mana" or "+N damage/draw/..." rank above generic "strictly
+                // better in this role" so canonical examples like
+                // Cancel → Counterspell don't get crowded out by clones.
+                let a_explicit = explicit_improvement_rank(&a.reason);
+                let b_explicit = explicit_improvement_rank(&b.reason);
+                b_explicit.cmp(&a_explicit)
+            }
+            other => other,
+        }
     });
+}
+
+fn explicit_improvement_rank(reason: &str) -> u32 {
+    if reason.contains(" less mana") || reason.starts_with('+') {
+        1
+    } else {
+        0
+    }
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -590,28 +639,39 @@ mod tests {
 
     #[test]
     fn creature_strict_upgrade_requires_better_stats() {
-        let bear = creature("Grizzly Bears", "{1}{G}", 2, 2, 2, &[]);
-        let watchwolf = creature("Watchwolf", "{G}{W}", 2, 3, 3, &[]);
+        let bear = creature("Grizzly Bears", "{1}{G}", 2, 2, 2, &["beater"]);
+        let watchwolf = creature("Watchwolf", "{G}{W}", 2, 3, 3, &["beater"]);
         // Watchwolf has tougher stats but different color cost — color identity
         // {GW} is not a subset of {G}.
-        watchwolf_color_check(&bear, &watchwolf);
+        assert!(!is_strict_upgrade(&bear, &watchwolf));
         // Same color, bigger stats → strict upgrade.
-        let stompy = creature("Stompy Bears", "{1}{G}", 2, 3, 3, &[]);
+        let stompy = creature("Stompy Bears", "{1}{G}", 2, 3, 3, &["beater"]);
         assert!(is_strict_upgrade(&bear, &stompy));
-    }
-
-    fn watchwolf_color_check(bear: &EngineCard, watchwolf: &EngineCard) {
-        assert!(!is_strict_upgrade(bear, watchwolf));
     }
 
     #[test]
     fn creature_strict_upgrade_keyword_superset() {
-        let plain_bear = creature("Plain Bear", "{1}{G}", 2, 2, 2, &[]);
-        let trample_bear = creature("Trample Bear", "{1}{G}", 2, 2, 2, &["trample"]);
+        let plain_bear = creature("Plain Bear", "{1}{G}", 2, 2, 2, &["beater"]);
+        let trample_bear = creature("Trample Bear", "{1}{G}", 2, 2, 2, &["beater", "trample"]);
         // Same stats but candidate adds trample → strict upgrade.
         assert!(is_strict_upgrade(&plain_bear, &trample_bear));
         // Reverse: removing trample → not an upgrade.
         assert!(!is_strict_upgrade(&trample_bear, &plain_bear));
+    }
+
+    #[test]
+    fn lands_are_skipped_in_strict_upgrade() {
+        let swamp = card("Swamp", "", 0, "land", "{T}: Add {B}.", &[]);
+        let radiant = card("Radiant Fountain", "", 0, "land", "{T}: Add {C}.", &["lifegain"]);
+        assert!(!is_strict_upgrade(&swamp, &radiant));
+    }
+
+    #[test]
+    fn untagged_deck_card_never_gets_strict_upgrade() {
+        // Without tags we have no idea what the card does, so don't suggest swaps.
+        let mystery = card("Mystery Spell", "{2}{U}", 3, "instant", "Do something.", &[]);
+        let cheaper = card("Cheap Spell", "{U}", 1, "instant", "Counter target spell.", &["counterspell"]);
+        assert!(!is_strict_upgrade(&mystery, &cheaper));
     }
 
     #[test]
