@@ -2,6 +2,11 @@ name: Build Android AAB
 
 on:
   workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Human-readable version (e.g. 1.0.1)'
+        required: true
+        default: '1.0'
 
 jobs:
   build:
@@ -47,6 +52,10 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           ANDROID_HOME: /usr/local/lib/android/sdk
+          # github.run_number is monotonically increasing → unique versionCode per run,
+          # which Play Console requires for every upload.
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: ${{ inputs.version_name }}
         run: |
           chmod +x gradlew
           ./gradlew bundleRelease
