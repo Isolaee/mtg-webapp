@@ -9,10 +9,11 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <!-- AdMob App ID — replace with your real ID from admob.google.com -->
+        <!-- AdMob App ID — Google's official sample/test App ID. Serves test ads only.
+             Replace with your real ID from admob.google.com before a revenue-bearing release. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"/>
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"

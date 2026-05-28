@@ -30,7 +30,7 @@ const SLOT_ID_LEADERBOARD = "XXXXXXXXXX"; // replace with AdSense leaderboard ad
 const AppInner: React.FC = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    AdMob.initialize({ initializeForTesting: false }).catch(() => {});
+    AdMob.initialize({ initializeForTesting: true }).catch(() => {});
   }, []);
 
   return (
