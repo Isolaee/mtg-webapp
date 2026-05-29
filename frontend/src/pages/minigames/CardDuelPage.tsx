@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchDuelLeaderboard,
   fetchDuelPair,
@@ -31,7 +31,15 @@ const CardDuelPage: React.FC = () => {
 
   const accent = game === "riftbound" ? T.purple : T.blue;
 
+  // Delay before auto-loading the next pair so the reveal is visible.
+  const REVEAL_MS = 1600;
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const loadPair = useCallback(async (g: Game, f: string) => {
+    if (advanceTimer.current) {
+      clearTimeout(advanceTimer.current);
+      advanceTimer.current = null;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
@@ -53,6 +61,14 @@ const CardDuelPage: React.FC = () => {
     loadPair(game, format);
   }, [game, format, loadPair]);
 
+  // Clear any pending auto-advance when leaving the page.
+  useEffect(
+    () => () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    },
+    [],
+  );
+
   const switchGame = (g: Game) => {
     if (g === game) return;
     setShowBoard(false);
@@ -69,6 +85,9 @@ const CardDuelPage: React.FC = () => {
     try {
       const res = await voteDuel(game, format, clicked.card_id, other.card_id, getVoterKey());
       setResult(res);
+      // Show the winner briefly, then auto-load the next pair.
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+      advanceTimer.current = setTimeout(() => loadPair(game, format), REVEAL_MS);
     } catch (e: any) {
       setError(
         e?.response?.status === 429
@@ -175,14 +194,15 @@ const CardDuelPage: React.FC = () => {
         </div>
       )}
 
-      {/* Reveal + next */}
+      {/* Reveal — auto-advances to the next pair shortly */}
       {result && (
-        <div style={{ textAlign: "center", marginTop: "1.5em" }}>
+        <div style={{ textAlign: "center", marginTop: "1.5em", display: "flex", justifyContent: "center", alignItems: "center", gap: "1em" }}>
+          <span style={{ color: T.textDim, fontSize: "0.9em" }}>Loading next matchup…</span>
           <button
             type="button"
             onClick={() => loadPair(game, format)}
             style={{
-              padding: "0.6em 1.6em",
+              padding: "0.5em 1.3em",
               background: `linear-gradient(to bottom, ${accent}CC, ${accent})`,
               color: T.goldLight,
               border: `1px solid ${T.gold}88`,
@@ -193,7 +213,7 @@ const CardDuelPage: React.FC = () => {
               textTransform: "uppercase",
             }}
           >
-            Next Pair →
+            Next Now →
           </button>
         </div>
       )}
