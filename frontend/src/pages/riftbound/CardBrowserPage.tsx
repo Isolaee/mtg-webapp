@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { fetchRbCards, RbCard } from "../../api";
 import { T } from "../../theme";
+import PageHeader from "../../components/PageHeader";
 
 const FACTIONS = ["", "body", "calm", "chaos", "colorless", "fury", "mind", "order"];
 const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
@@ -59,7 +60,7 @@ const CardBrowserPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "1em", color: T.purple }}>Riftbound Cards</h1>
+      <PageHeader title="Riftbound Cards" accent={T.purple} />
 
       {/* Filter bar */}
       <div

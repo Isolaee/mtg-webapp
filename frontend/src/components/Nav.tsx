@@ -3,33 +3,62 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { T } from "../theme";
 
+// Game-specific tools. These change with the active game and take the game accent.
+// NOTE: Riftbound has no "Analysis" entry — the deck analyzer is MTG-only for now
+// (see tcg-website-tjp). Add it here once an RB analysis page exists.
 const MTG_LINKS = [
   { to: "/cards", label: "Cards" },
   { to: "/deck-builder", label: "Deck Builder" },
-  { to: "/my-decks", label: "My Decks" },
-  { to: "/collection", label: "Collection" },
   { to: "/tournaments", label: "Tournaments" },
   { to: "/deck-analysis", label: "Analysis" },
-  { to: "/minigames", label: "Minigames" },
 ];
 
 const RB_LINKS = [
   { to: "/riftbound", label: "Cards" },
   { to: "/riftbound/deck-builder", label: "Deck Builder" },
-  { to: "/my-decks", label: "My Decks" },
-  { to: "/collection", label: "Collection" },
   { to: "/riftbound/tournaments", label: "Tournaments" },
-  { to: "/minigames", label: "Minigames" },
 ];
+
+// Cross-game features. These are NOT tied to a game, so they live in the top bar
+// (not the per-game sub-nav) and keep a neutral gold accent. This avoids the old
+// behaviour where opening them flipped the whole chrome back to MTG, and removes
+// the redundant third level of game tabs (each of these pages picks its own game).
+const NEUTRAL_LINKS = [
+  { to: "/my-decks", label: "My Decks", auth: true },
+  { to: "/collection", label: "Collection", auth: true },
+  { to: "/minigames", label: "Minigames", auth: false },
+];
+
+// True when `to` is the best match for the current path — exact match, or a prefix
+// followed by "/". The longest match wins so e.g. /riftbound/deck-builder activates
+// "Deck Builder", not the "/riftbound" Cards index link.
+const bestMatch = (pathname: string, links: { to: string }[]): string | undefined => {
+  const matches = links
+    .map((l) => l.to)
+    .filter((to) => pathname === to || pathname.startsWith(to + "/"));
+  return matches.sort((a, b) => b.length - a.length)[0];
+};
+
+// Routes (and their sub-routes) that belong to no single game — the game sub-nav
+// is hidden here and neither game tab is forced active.
+const NEUTRAL_PREFIXES = ["/my-decks", "/collection", "/minigames", "/profile", "/login", "/privacy", "/test"];
+const isNeutralPath = (pathname: string) =>
+  pathname === "/" || NEUTRAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 const Nav: React.FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { username, logout } = useAuth();
-  const isHome = pathname === "/";
-  const isMtg = !pathname.startsWith("/riftbound");
-  const subLinks = isMtg ? MTG_LINKS : RB_LINKS;
-  const accentColor = isMtg ? T.blue : T.purple;
+
+  const isRiftbound = pathname.startsWith("/riftbound");
+  const isNeutral = isNeutralPath(pathname);
+  const isMtg = !isRiftbound && !isNeutral;
+  const showSubNav = isMtg || isRiftbound;
+
+  const subLinks = isRiftbound ? RB_LINKS : MTG_LINKS;
+  const accentColor = isRiftbound ? T.purple : T.blue;
+  const activeSub = bestMatch(pathname, subLinks);
+  const activeNeutral = bestMatch(pathname, NEUTRAL_LINKS);
 
   const handleLogout = () => {
     logout();
@@ -38,11 +67,12 @@ const Nav: React.FC = () => {
 
   return (
     <nav style={{ marginBottom: "2em" }}>
-      {/* Top bar: logo + game tabs + user area */}
+      {/* Top bar: logo + game tabs + neutral links + user area */}
       <div
         style={{
           display: "flex",
           alignItems: "stretch",
+          flexWrap: "wrap",
           background: T.surface,
           borderBottom: `1px solid ${T.borderGold}55`,
         }}
@@ -54,7 +84,7 @@ const Nav: React.FC = () => {
             display: "flex",
             alignItems: "center",
             gap: "0.5em",
-            padding: "0 1.4em",
+            padding: "0.6em 1.4em",
             textDecoration: "none",
             borderRight: `1px solid ${T.border}`,
             flexShrink: 0,
@@ -76,10 +106,15 @@ const Nav: React.FC = () => {
         </Link>
 
         {/* Game tabs */}
-        <GameTab to="/cards" label="Magic: The Gathering" active={!pathname.startsWith("/riftbound") && !isHome} color={T.blue} />
-        <GameTab to="/riftbound" label="Riftbound" active={pathname.startsWith("/riftbound")} color={T.purple} />
+        <GameTab to="/cards" label="Magic: The Gathering" active={isMtg} color={T.blue} />
+        <GameTab to="/riftbound" label="Riftbound" active={isRiftbound} color={T.purple} />
 
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minWidth: "1em" }} />
+
+        {/* Cross-game links */}
+        {NEUTRAL_LINKS.filter((l) => !l.auth || username).map(({ to, label }) => (
+          <NeutralLink key={to} to={to} label={label} active={to === activeNeutral} />
+        ))}
 
         {/* Ko-Fi support link */}
         <a
@@ -95,7 +130,7 @@ const Nav: React.FC = () => {
             color: T.textDim,
             textDecoration: "none",
             letterSpacing: "0.03em",
-            borderRight: `1px solid ${T.border}`,
+            borderLeft: `1px solid ${T.border}`,
             whiteSpace: "nowrap",
           }}
         >
@@ -104,7 +139,7 @@ const Nav: React.FC = () => {
 
         {/* User area */}
         {username ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6em", padding: "0 1.2em" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6em", padding: "0 1.2em", borderLeft: `1px solid ${T.border}` }}>
             <Link
               to="/profile"
               style={{
@@ -167,6 +202,7 @@ const Nav: React.FC = () => {
               fontWeight: 700,
               letterSpacing: "0.05em",
               textTransform: "uppercase",
+              borderLeft: `1px solid ${T.border}`,
             }}
           >
             Log in
@@ -174,11 +210,12 @@ const Nav: React.FC = () => {
         )}
       </div>
 
-      {/* Sub-navigation — hidden on the landing page */}
-      {!isHome && (
+      {/* Sub-navigation — game-specific tools only; hidden on neutral pages */}
+      {showSubNav && (
         <div
           style={{
             display: "flex",
+            flexWrap: "wrap",
             gap: 0,
             background: T.bg,
             borderBottom: `1px solid ${T.border}`,
@@ -186,7 +223,7 @@ const Nav: React.FC = () => {
           }}
         >
           {subLinks.map(({ to, label }) => {
-            const active = pathname === to || (to !== "/" && pathname.startsWith(to));
+            const active = to === activeSub;
             return (
               <Link
                 key={to}
@@ -267,6 +304,28 @@ const GameTab: React.FC<GameTabProps> = ({ to, label, active, color }) => (
       textTransform: "uppercase",
       transition: "all 0.15s",
       whiteSpace: "nowrap",
+    }}
+  >
+    {label}
+  </Link>
+);
+
+const NeutralLink: React.FC<{ to: string; label: string; active: boolean }> = ({ to, label, active }) => (
+  <Link
+    to={to}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      padding: "0 1em",
+      fontSize: 12,
+      fontWeight: active ? 700 : 500,
+      color: active ? T.gold : T.textDim,
+      textDecoration: "none",
+      letterSpacing: "0.04em",
+      textTransform: "uppercase",
+      borderBottom: active ? `2px solid ${T.gold}` : "2px solid transparent",
+      whiteSpace: "nowrap",
+      transition: "color 0.15s, border-color 0.15s",
     }}
   >
     {label}

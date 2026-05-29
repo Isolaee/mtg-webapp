@@ -16,6 +16,7 @@ import {
 import UpgradesModal from "../../components/UpgradesModal";
 import { useAuth } from "../../context/AuthContext";
 import { T } from "../../theme";
+import PageHeader from "../../components/PageHeader";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8080/api";
 
@@ -221,7 +222,7 @@ const DeckBuilderPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "0.8em" }}>MTG Deck Builder</h1>
+      <PageHeader title="MTG Deck Builder" accent={T.blue} />
 
       {/* Toolbar */}
       <div style={{ display: "flex", gap: "0.6em", alignItems: "center", marginBottom: "0.75em", flexWrap: "wrap" }}>

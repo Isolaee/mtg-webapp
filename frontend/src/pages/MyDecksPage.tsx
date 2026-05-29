@@ -9,6 +9,7 @@ import {
   deleteRbDeck,
 } from "../api";
 import { T } from "../theme";
+import PageHeader from "../components/PageHeader";
 
 type Tab = "mtg" | "riftbound";
 
@@ -51,7 +52,7 @@ const MyDecksPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "1.2em" }}>My Decks</h1>
+      <PageHeader title="My Decks" />
 
       {/* Tabs */}
       <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: "1.8em" }}>

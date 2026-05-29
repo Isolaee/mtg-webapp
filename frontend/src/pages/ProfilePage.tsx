@@ -5,6 +5,7 @@ import { fetchProfile, changePassword, UserProfile } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useIAP } from "../hooks/useIAP";
 import { T, panel, btn } from "../theme";
+import PageHeader from "../components/PageHeader";
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <h1 style={{ marginBottom: "1.5em" }}>Profile</h1>
+      <PageHeader title="Profile" />
 
       {/* Account card */}
       <div style={{ ...panel, marginBottom: "1.5em" }}>

@@ -13,6 +13,7 @@ import { useAuth } from "../../context/AuthContext";
 import RbVisualStack, { DeckEntry } from "../../components/riftbound/RbVisualStack";
 import RbDeckStats, { validateDeck } from "../../components/riftbound/RbDeckStats";
 import { T } from "../../theme";
+import PageHeader from "../../components/PageHeader";
 
 const FACTIONS = ["", "body", "calm", "chaos", "colorless", "fury", "mind", "order"];
 const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
@@ -164,7 +165,7 @@ const DeckBuilderPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ color: T.purple, marginBottom: "1em" }}>Riftbound Deck Builder</h1>
+      <PageHeader title="Riftbound Deck Builder" accent={T.purple} />
 
       {/* Toolbar */}
       <div style={{ display: "flex", gap: "0.6em", alignItems: "center", marginBottom: "0.75em", flexWrap: "wrap" }}>
