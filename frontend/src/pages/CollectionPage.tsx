@@ -111,7 +111,7 @@ const CollectionPage: React.FC = () => {
 
   return (
     <div>
-      <PageHeader title="My Collection" />
+      <PageHeader title="Collection" />
 
       {/* Game tabs */}
       <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: "1.8em" }}>
