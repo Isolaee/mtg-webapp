@@ -23,6 +23,8 @@ import CollectionPage from "./pages/CollectionPage";
 import CollectionScanPage from "./pages/CollectionScanPage";
 import TournamentsPage from "./pages/TournamentsPage";
 import DeckAnalysisPage from "./pages/mtg/DeckAnalysisPage";
+import MinigamesPage from "./pages/MinigamesPage";
+import CardDuelPage from "./pages/minigames/CardDuelPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 
 const SLOT_ID_LEADERBOARD = "XXXXXXXXXX"; // replace with AdSense leaderboard ad unit slot ID
@@ -94,6 +96,9 @@ const AppInner: React.FC = () => {
             <Route path="/riftbound" element={<CardBrowserPage />} />
             <Route path="/riftbound/deck-builder" element={<RbDeckBuilderPage />} />
             <Route path="/riftbound/tournaments" element={<TournamentsPage />} />
+            {/* Minigames */}
+            <Route path="/minigames" element={<MinigamesPage />} />
+            <Route path="/minigames/duel" element={<CardDuelPage />} />
             {/* Legal */}
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
           </Routes>

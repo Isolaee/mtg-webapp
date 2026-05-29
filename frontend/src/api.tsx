@@ -494,3 +494,138 @@ export const scanCard = async (imageBase64: string): Promise<ScanMatch[]> => {
   );
   return response.data.matches;
 };
+
+// ── Minigames ──────────────────────────────────────────────────────────────
+
+export interface Minigame {
+  id: number;
+  type: string;
+  game: string | null;
+  prompt: string;
+  status: string;
+  created_at: string;
+}
+
+export interface MinigameOption {
+  id: number;
+  minigame_id: number;
+  label: string;
+  card_id: string | null;
+  image_url: string | null;
+  position: number;
+}
+
+export interface OptionResult {
+  option_id: number;
+  label: string;
+  card_id: string | null;
+  image_url: string | null;
+  position: number;
+  votes: number;
+  percentage: number;
+}
+
+export interface MinigameAggregate {
+  minigame_id: number;
+  total_votes: number;
+  results: OptionResult[];
+}
+
+export interface MinigameDetail extends Minigame {
+  options: MinigameOption[];
+  aggregate: MinigameAggregate;
+}
+
+export const fetchMinigames = async (): Promise<Minigame[]> => {
+  const response = await axios.get<Minigame[]>(`${API_BASE_URL}/minigames`);
+  return response.data;
+};
+
+export const fetchMinigame = async (id: number): Promise<MinigameDetail> => {
+  const response = await axios.get<MinigameDetail>(`${API_BASE_URL}/minigames/${id}`);
+  return response.data;
+};
+
+export const voteMinigame = async (
+  id: number,
+  optionId: number,
+  voterKey: string,
+): Promise<MinigameAggregate> => {
+  const response = await axios.post<MinigameAggregate>(
+    `${API_BASE_URL}/minigames/${id}/vote`,
+    { option_id: optionId, voter_key: voterKey },
+    { headers: authHeaders() },
+  );
+  return response.data;
+};
+
+// ── Card Duel ("which card is stronger?") ────────────────────────────────────
+
+export interface DuelCard {
+  card_id: string;
+  name: string;
+  image: string | null;
+  elo: number;
+}
+
+export interface DuelPair {
+  game: string;
+  format: string;
+  cards: DuelCard[];
+}
+
+export interface DuelRatingChange {
+  old: number;
+  new: number;
+}
+
+export interface DuelResult {
+  winner_card_id: string;
+  loser_card_id: string;
+  winner: DuelRatingChange;
+  loser: DuelRatingChange;
+  higher_card_id: string;
+}
+
+export interface DuelLeaderboardEntry {
+  rank: number;
+  name: string;
+  image: string | null;
+  elo: number;
+  games_played: number;
+  wins: number;
+}
+
+export const fetchDuelPair = async (game: string, format: string): Promise<DuelPair> => {
+  const response = await axios.get<DuelPair>(`${API_BASE_URL}/minigames/duel/pair`, {
+    params: { game, format },
+  });
+  return response.data;
+};
+
+export const voteDuel = async (
+  game: string,
+  format: string,
+  winnerCardId: string,
+  loserCardId: string,
+  voterKey: string,
+): Promise<DuelResult> => {
+  const response = await axios.post<DuelResult>(
+    `${API_BASE_URL}/minigames/duel/vote`,
+    { game, format, winner_card_id: winnerCardId, loser_card_id: loserCardId, voter_key: voterKey },
+    { headers: authHeaders() },
+  );
+  return response.data;
+};
+
+export const fetchDuelLeaderboard = async (
+  game: string,
+  format: string,
+  limit = 10,
+): Promise<DuelLeaderboardEntry[]> => {
+  const response = await axios.get<DuelLeaderboardEntry[]>(
+    `${API_BASE_URL}/minigames/duel/leaderboard`,
+    { params: { game, format, limit } },
+  );
+  return response.data;
+};

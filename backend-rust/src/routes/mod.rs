@@ -1,8 +1,10 @@
 pub mod analysis;
 pub mod auth;
+pub mod card_duel;
 pub mod cards;
 pub mod collection;
 pub mod decks;
+pub mod minigames;
 pub mod riftbound;
 pub mod tournaments;
 pub mod upgrades;
@@ -48,5 +50,7 @@ pub fn router(pool: SqlitePool) -> Router {
         .merge(collection::router(pool.clone()))
         .merge(analysis::router(pool.clone()))
         .merge(tournaments::router(pool.clone()))
+        .merge(minigames::router(pool.clone()))
+        .merge(card_duel::router(pool.clone()))
         .merge(upgrades::router(pool))
 }

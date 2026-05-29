@@ -1,8 +1,8 @@
 use crate::db;
+use crate::rate_limit::{rate_limit_middleware, RateLimiter};
 use axum::{
-    extract::{ConnectInfo, State},
+    extract::State,
     http::{header, StatusCode},
-    middleware::Next,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -10,11 +10,7 @@ use axum::{
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use std::collections::HashMap;
 use std::env;
-use std::net::{IpAddr, SocketAddr};
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
 use uuid::Uuid;
 
 fn jwt_secret() -> String {
@@ -72,57 +68,6 @@ pub async fn extract_username_checked(
         anyhow::bail!("token revoked");
     }
     Ok(claims.sub)
-}
-
-// ── Rate limiter ──────────────────────────────────────────────────────────────
-
-#[derive(Clone)]
-struct RateLimiter {
-    map: Arc<Mutex<HashMap<IpAddr, (u32, Instant)>>>,
-    max_requests: u32,
-    window_secs: u64,
-}
-
-impl RateLimiter {
-    fn new(max_requests: u32, window_secs: u64) -> Self {
-        Self {
-            map: Arc::new(Mutex::new(HashMap::new())),
-            max_requests,
-            window_secs,
-        }
-    }
-
-    fn check_and_increment(&self, ip: IpAddr) -> bool {
-        let mut map = self.map.lock().unwrap();
-        let now = Instant::now();
-        let entry = map.entry(ip).or_insert((0, now));
-        if now.duration_since(entry.1).as_secs() >= self.window_secs {
-            *entry = (1, now);
-            true
-        } else if entry.0 < self.max_requests {
-            entry.0 += 1;
-            true
-        } else {
-            false
-        }
-    }
-}
-
-async fn rate_limit_middleware(
-    State(limiter): State<RateLimiter>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    req: axum::extract::Request,
-    next: Next,
-) -> axum::response::Response {
-    if limiter.check_and_increment(addr.ip()) {
-        next.run(req).await
-    } else {
-        (
-            StatusCode::TOO_MANY_REQUESTS,
-            Json(serde_json::json!({"msg": "Too many requests, please try again later"})),
-        )
-            .into_response()
-    }
 }
 
 pub fn router(pool: SqlitePool) -> Router {
