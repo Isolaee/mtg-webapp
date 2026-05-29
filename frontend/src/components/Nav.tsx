@@ -10,6 +10,7 @@ const MTG_LINKS = [
   { to: "/collection", label: "Collection" },
   { to: "/tournaments", label: "Tournaments" },
   { to: "/deck-analysis", label: "Analysis" },
+  { to: "/minigames", label: "Minigames" },
 ];
 
 const RB_LINKS = [
@@ -18,6 +19,7 @@ const RB_LINKS = [
   { to: "/my-decks", label: "My Decks" },
   { to: "/collection", label: "Collection" },
   { to: "/riftbound/tournaments", label: "Tournaments" },
+  { to: "/minigames", label: "Minigames" },
 ];
 
 const Nav: React.FC = () => {
