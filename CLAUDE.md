@@ -92,6 +92,26 @@ Run on connected device or emulator:
 npx cap run android
 ```
 
+**Preferred emulator launch flow (avoid host slowdown):** the AVD `Medium_Phone_API_36.1` exists. Do NOT launch with software rendering and a visible window on a shared/desktop machine — `-gpu swiftshader_indirect` renders the display on the CPU and, combined with build processes, exhausts RAM and pushes the host into swap, making the whole desktop unresponsive. Pick ONE of:
+
+```bash
+# Non-visual (preferred when driving via adb: screencap, input tap, logcat) — no host display rendering at all
+emulator -avd Medium_Phone_API_36.1 -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -no-boot-anim
+
+# GPU-bound (when a window IS needed) — render on the host GPU, not the CPU
+emulator -avd Medium_Phone_API_36.1 -gpu host -no-snapshot -no-audio -no-boot-anim
+```
+
+Run the Gradle build BEFORE starting the emulator (don't overlap them), and run `cd frontend/android && ./gradlew --stop` when done — idle Gradle JVM daemons keep holding RAM after the emulator exits.
+
+**Building the APK without Android Studio (headless):** system `/usr/bin/java` is JRE-only (no `javac`) and there's no sudo. Portable JDKs live in `~/jdks`: `jdk-17.0.19+10` AND `jdk-21.0.11+10` (the `@capacitor/camera` plugin pins a JDK-21 toolchain; the app module uses 17). Build from `frontend/android`:
+```bash
+ANDROID_HOME=~/Android/Sdk JAVA_HOME=~/jdks/jdk-21.0.11+10 \
+  ./gradlew assembleDebug -Dorg.gradle.java.home="$JAVA_HOME" \
+  -Porg.gradle.java.installations.paths="$HOME/jdks/jdk-17.0.19+10,$HOME/jdks/jdk-21.0.11+10"
+```
+Gradle auto-selects the right JDK per module; SDK platform/build-tools auto-install on first build. APK lands at `app/build/outputs/apk/debug/app-debug.apk`.
+
 **API URL for Android build:** set `REACT_APP_API_URL=https://api.tcg-singularity.com/api` in the shell before `npm run build` (the Android app cannot reach `localhost`). For web prod deploys the value comes from the GitHub Actions repo variable `REACT_APP_API_URL` (environment: production) — there is no `.env.production` file.
 
 Re-run `npm run build && npx cap sync android` after every React change.
