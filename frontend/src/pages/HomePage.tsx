@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import { fetchMinigames, type Minigame } from "../api";
-import MinigameCard from "../components/minigames/MinigameCard";
 import { T } from "../theme";
 
 const HomePage: React.FC = () => (
@@ -40,9 +38,6 @@ const HomePage: React.FC = () => (
         Browse cards, build decks, and save your collections for Magic: The Gathering and Riftbound.
       </p>
     </div>
-
-    {/* Featured community minigame */}
-    <DailyMinigameWidget />
 
     {/* Game cards */}
     <div style={{ display: "flex", gap: "1.5em", flexWrap: "wrap" }}>
@@ -160,56 +155,5 @@ const GameSection: React.FC<GameSectionProps> = ({ title, tagline, color, featur
     </div>
   </div>
 );
-
-const DailyMinigameWidget: React.FC = () => {
-  const [game, setGame] = useState<Minigame | null>(null);
-
-  useEffect(() => {
-    fetchMinigames()
-      .then((games) => setGame(games[0] ?? null))
-      .catch(() => setGame(null));
-  }, []);
-
-  if (!game) return null;
-
-  return (
-    <div style={{ marginBottom: "2.5em" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          marginBottom: "0.7em",
-        }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            color: T.gold,
-            fontFamily: "Cinzel, serif",
-            fontSize: "1.1em",
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-          }}
-        >
-          Community Pick of the Day
-        </h2>
-        <Link
-          to="/minigames"
-          style={{
-            color: T.gold,
-            fontSize: "0.85em",
-            textDecoration: "none",
-            fontWeight: 600,
-            letterSpacing: "0.03em",
-          }}
-        >
-          See all minigames →
-        </Link>
-      </div>
-      <MinigameCard minigameId={game.id} />
-    </div>
-  );
-};
 
 export default HomePage;

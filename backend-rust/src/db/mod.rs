@@ -4,7 +4,6 @@ pub mod card_duel;
 pub mod cards;
 pub mod collection;
 pub mod decks;
-pub mod minigames;
 pub mod riftbound;
 pub mod tournaments;
 pub mod upgrades;
@@ -18,7 +17,6 @@ pub async fn create_pool(database_url: &str) -> anyhow::Result<SqlitePool> {
     collection::ensure_tables(&pool).await?;
     tournaments::ensure_tables(&pool).await?;
     analysis::ensure_tables(&pool).await?;
-    minigames::ensure_tables(&pool).await?;
     card_duel::ensure_tables(&pool).await?;
     auth_tokens::ensure_table(&pool).await?;
     upgrades::ensure_tables(&pool).await?;
