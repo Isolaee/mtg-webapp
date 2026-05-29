@@ -196,25 +196,8 @@ const CardDuelPage: React.FC = () => {
 
       {/* Reveal — auto-advances to the next pair shortly */}
       {result && (
-        <div style={{ textAlign: "center", marginTop: "1.5em", display: "flex", justifyContent: "center", alignItems: "center", gap: "1em" }}>
+        <div style={{ textAlign: "center", marginTop: "1.5em" }}>
           <span style={{ color: T.textDim, fontSize: "0.9em" }}>Loading next matchup…</span>
-          <button
-            type="button"
-            onClick={() => loadPair(game, format)}
-            style={{
-              padding: "0.5em 1.3em",
-              background: `linear-gradient(to bottom, ${accent}CC, ${accent})`,
-              color: T.goldLight,
-              border: `1px solid ${T.gold}88`,
-              borderRadius: 4,
-              fontWeight: 700,
-              cursor: "pointer",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-            }}
-          >
-            Next Now →
-          </button>
         </div>
       )}
 
