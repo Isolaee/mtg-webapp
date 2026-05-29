@@ -1,7 +1,6 @@
 pub mod card;
 pub mod collection;
 pub mod deck;
-pub mod minigame;
 pub mod riftbound;
 pub mod tournament;
 pub mod user;
