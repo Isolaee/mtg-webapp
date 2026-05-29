@@ -1,7 +1,5 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
-import { Capacitor } from "@capacitor/core";
-import { AdMob } from "@capacitor-community/admob";
 import Nav from "./components/Nav";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -30,11 +28,6 @@ import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 const SLOT_ID_LEADERBOARD = "XXXXXXXXXX"; // replace with AdSense leaderboard ad unit slot ID
 
 const AppInner: React.FC = () => {
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    AdMob.initialize({ initializeForTesting: true }).catch(() => {});
-  }, []);
-
   return (
     <>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5em" }}>
