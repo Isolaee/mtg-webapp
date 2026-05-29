@@ -121,6 +121,8 @@ pub async fn pick_mtg_pair(
     let sql = format!(
         "SELECT name, image FROM cards
          WHERE image IS NOT NULL AND TRIM(image) != ''
+           AND COALESCE(cardtype,'') NOT LIKE '%Token%'
+           AND COALESCE(cardtype,'') NOT LIKE '%Emblem%'
            AND {LEGALITY_OR_CLAUSE}
          ORDER BY RANDOM() LIMIT 2"
     );
@@ -147,6 +149,7 @@ pub async fn pick_rb_pair(pool: &SqlitePool) -> anyhow::Result<Option<(DuelCardR
     let rows = sqlx::query_as::<_, (String, String, Option<String>)>(
         "SELECT id, name, COALESCE(image_medium, image) AS image FROM rb_cards
          WHERE COALESCE(image_medium, image) IS NOT NULL
+           AND card_type NOT IN ('Battlefield', 'Rune')
          ORDER BY RANDOM() LIMIT 2",
     )
     .fetch_all(pool)
@@ -177,6 +180,8 @@ pub async fn card_eligible(
             let sql = format!(
                 "SELECT 1 FROM cards
                  WHERE name = ? AND image IS NOT NULL AND TRIM(image) != ''
+                   AND COALESCE(cardtype,'') NOT LIKE '%Token%'
+                   AND COALESCE(cardtype,'') NOT LIKE '%Emblem%'
                    AND {LEGALITY_OR_CLAUSE}
                  LIMIT 1"
             );
@@ -190,6 +195,7 @@ pub async fn card_eligible(
             sqlx::query_as(
                 "SELECT 1 FROM rb_cards
                  WHERE id = ? AND COALESCE(image_medium, image) IS NOT NULL
+                   AND card_type NOT IN ('Battlefield', 'Rune')
                  LIMIT 1",
             )
             .bind(card_id)
