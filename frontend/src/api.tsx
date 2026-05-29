@@ -56,6 +56,8 @@ export interface MtgDeckFull {
   description?: string;
   commander?: Card;
   cards: Card[];
+  sideboard?: Card[];
+  maybeboard?: Card[];
 }
 
 export interface MtgDeckSavePayload {
@@ -64,6 +66,8 @@ export interface MtgDeckSavePayload {
   description?: string;
   commander?: Card;
   cards: Card[];
+  sideboard?: Card[];
+  maybeboard?: Card[];
 }
 
 export interface UserProfile {

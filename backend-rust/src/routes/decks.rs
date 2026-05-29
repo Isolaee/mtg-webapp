@@ -65,6 +65,12 @@ async fn get_deck(
             "cards": deck.cards.as_deref()
                 .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
                 .unwrap_or(json!([])),
+            "sideboard": deck.sideboard.as_deref()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                .unwrap_or(json!([])),
+            "maybeboard": deck.maybeboard.as_deref()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                .unwrap_or(json!([])),
         }))
         .into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Deck not found"}))).into_response(),
@@ -82,6 +88,10 @@ struct DeckSaveInput {
     description: Option<String>,
     commander: Option<serde_json::Value>,
     cards: Vec<serde_json::Value>,
+    #[serde(default)]
+    sideboard: Vec<serde_json::Value>,
+    #[serde(default)]
+    maybeboard: Vec<serde_json::Value>,
 }
 
 async fn save_deck(
@@ -98,6 +108,14 @@ async fn save_deck(
         .as_ref()
         .map(|v| serde_json::to_string(v).unwrap_or_default());
     let cards_str = serde_json::to_string(&input.cards).unwrap_or_default();
+    let sideboard_str = serde_json::to_string(&input.sideboard).unwrap_or_default();
+    let maybeboard_str = serde_json::to_string(&input.maybeboard).unwrap_or_default();
+    // Save-or-replace: drop any existing deck with the same name for this user so
+    // re-saving updates in place instead of creating duplicate rows.
+    if let Err(e) = db::decks::delete_by_name_and_user(&pool, &input.name, &user).await {
+        tracing::error!("decks db error: {e}");
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response();
+    }
     match db::decks::insert(
         &pool,
         &input.name,
@@ -105,6 +123,8 @@ async fn save_deck(
         &input.format,
         commander_str.as_deref(),
         Some(&cards_str),
+        Some(&sideboard_str),
+        Some(&maybeboard_str),
         &user,
     )
     .await
@@ -148,16 +168,19 @@ async fn upload_deck(State(pool): State<SqlitePool>, headers: HeaderMap, multipa
     if form.file_content.is_empty() {
         return (StatusCode::BAD_REQUEST, Json(json!({"msg": "No file uploaded"}))).into_response();
     }
-    let card_names = parse_card_list(&form.file_content);
-    if card_names.len() > 500 {
+    let parsed = parse_card_list(&form.file_content);
+    let total = parsed.main.len() + parsed.side.len() + parsed.maybe.len();
+    if total > 500 {
         return (StatusCode::BAD_REQUEST, Json(json!({"msg": "Deck exceeds 500 cards"}))).into_response();
     }
-    match build_deck_json(&pool, &card_names, &form.commander_name).await {
-        Ok((cards, commander)) => Json(json!({
+    match build_deck_json(&pool, &parsed, &form.commander_name).await {
+        Ok((cards, sideboard, maybeboard, commander)) => Json(json!({
             "name": form.deck_name,
             "format": form.format,
             "commander": commander,
             "cards": cards,
+            "sideboard": sideboard,
+            "maybeboard": maybeboard,
         }))
         .into_response(),
         Err(e) => (StatusCode::BAD_REQUEST, Json(json!({"msg": e.to_string()}))).into_response(),
@@ -191,48 +214,107 @@ async fn parse_multipart(mut multipart: Multipart) -> anyhow::Result<DeckForm> {
     Ok(DeckForm { file_content, format, commander_name, deck_name })
 }
 
-fn parse_card_list(content: &str) -> Vec<String> {
+struct ParsedDeck {
+    main: Vec<String>,
+    side: Vec<String>,
+    maybe: Vec<String>,
+}
+
+// Recognise a section header line (e.g. "Sideboard", "Maybeboard:", "Deck").
+// Returns which section subsequent lines belong to, or None if not a header.
+fn section_header(line: &str) -> Option<Section> {
+    let key = line.trim().trim_end_matches(':').to_lowercase();
+    match key.as_str() {
+        "main" | "mainboard" | "deck" | "commander" => Some(Section::Main),
+        "sideboard" | "side" => Some(Section::Side),
+        "maybeboard" | "maybe" => Some(Section::Maybe),
+        _ => None,
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Section {
+    Main,
+    Side,
+    Maybe,
+}
+
+fn parse_card_list(content: &str) -> ParsedDeck {
     let re = card_regex();
-    let mut names = Vec::new();
+    let mut parsed = ParsedDeck { main: Vec::new(), side: Vec::new(), maybe: Vec::new() };
+    let mut section = Section::Main;
     for line in content.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with("//") {
             continue;
         }
+        if let Some(next) = section_header(line) {
+            section = next;
+            continue;
+        }
         if let Some(caps) = re.captures(line) {
             let qty: usize = caps[1].parse::<usize>().unwrap_or(1).min(99);
             let name = caps[2].trim().to_string();
+            let bucket = match section {
+                Section::Main => &mut parsed.main,
+                Section::Side => &mut parsed.side,
+                Section::Maybe => &mut parsed.maybe,
+            };
             for _ in 0..qty {
-                names.push(name.clone());
+                bucket.push(name.clone());
             }
         }
     }
-    names
+    parsed
 }
 
 async fn build_deck_json(
     pool: &SqlitePool,
-    card_names: &[String],
+    parsed: &ParsedDeck,
     commander_name: &str,
-) -> anyhow::Result<(serde_json::Value, Option<serde_json::Value>)> {
+) -> anyhow::Result<(
+    serde_json::Value,
+    serde_json::Value,
+    serde_json::Value,
+    Option<serde_json::Value>,
+)> {
+    // Resolve every referenced name in one DB round-trip.
     let unique: Vec<String> = {
         let mut seen = std::collections::HashSet::new();
-        card_names.iter().filter(|n| seen.insert((*n).clone())).cloned().collect()
+        parsed
+            .main
+            .iter()
+            .chain(parsed.side.iter())
+            .chain(parsed.maybe.iter())
+            .filter(|n| seen.insert((*n).clone()))
+            .cloned()
+            .collect()
     };
     let found = db::cards::find_by_names(pool, &unique).await?;
     let card_map: std::collections::HashMap<String, _> =
         found.into_iter().map(|c| (c.name.to_lowercase(), c)).collect();
 
-    let mut cards_json = Vec::new();
     let mut commander_json: Option<serde_json::Value> = None;
-    for name in card_names {
-        if let Some(card) = card_map.get(&name.to_lowercase()) {
-            let val = serde_json::to_value(card)?;
-            if !commander_name.is_empty() && name.to_lowercase() == commander_name.to_lowercase() {
-                commander_json = Some(val.clone());
+    let resolve = |names: &[String],
+                   commander_json: &mut Option<serde_json::Value>|
+     -> anyhow::Result<serde_json::Value> {
+        let mut out = Vec::new();
+        for name in names {
+            if let Some(card) = card_map.get(&name.to_lowercase()) {
+                let val = serde_json::to_value(card)?;
+                if !commander_name.is_empty()
+                    && name.to_lowercase() == commander_name.to_lowercase()
+                {
+                    *commander_json = Some(val.clone());
+                }
+                out.push(val);
             }
-            cards_json.push(val);
         }
-    }
-    Ok((serde_json::Value::Array(cards_json), commander_json))
+        Ok(serde_json::Value::Array(out))
+    };
+
+    let cards_json = resolve(&parsed.main, &mut commander_json)?;
+    let side_json = resolve(&parsed.side, &mut commander_json)?;
+    let maybe_json = resolve(&parsed.maybe, &mut commander_json)?;
+    Ok((cards_json, side_json, maybe_json, commander_json))
 }

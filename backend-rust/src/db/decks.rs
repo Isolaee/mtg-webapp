@@ -6,6 +6,8 @@ pub async fn find_all_by_user(pool: &SqlitePool, user_id: &str) -> anyhow::Resul
         "SELECT id, name, description, format,
                 CAST(commander AS TEXT) as commander,
                 CAST(cards AS TEXT) as cards,
+                CAST(sideboard AS TEXT) as sideboard,
+                CAST(maybeboard AS TEXT) as maybeboard,
                 user_id
          FROM decks WHERE user_id = ?",
     )
@@ -23,6 +25,8 @@ pub async fn find_by_name_and_user(
         "SELECT id, name, description, format,
                 CAST(commander AS TEXT) as commander,
                 CAST(cards AS TEXT) as cards,
+                CAST(sideboard AS TEXT) as sideboard,
+                CAST(maybeboard AS TEXT) as maybeboard,
                 user_id
          FROM decks WHERE name = ? AND user_id = ?",
     )
@@ -45,6 +49,7 @@ pub async fn delete_by_name_and_user(
         .rows_affected())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert(
     pool: &SqlitePool,
     name: &str,
@@ -52,17 +57,21 @@ pub async fn insert(
     format: &str,
     commander: Option<&str>,
     cards: Option<&str>,
+    sideboard: Option<&str>,
+    maybeboard: Option<&str>,
     user_id: &str,
 ) -> anyhow::Result<i64> {
     let id = sqlx::query(
-        "INSERT INTO decks (name, description, format, commander, cards, user_id)
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO decks (name, description, format, commander, cards, sideboard, maybeboard, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(name)
     .bind(description)
     .bind(format)
     .bind(commander)
     .bind(cards)
+    .bind(sideboard)
+    .bind(maybeboard)
     .bind(user_id)
     .execute(pool)
     .await?
