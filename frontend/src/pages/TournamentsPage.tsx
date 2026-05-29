@@ -9,6 +9,7 @@ import {
   fetchTournaments,
 } from "../api";
 import { T, panel } from "../theme";
+import PageHeader from "../components/PageHeader";
 
 const MTG_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "pauper", "premodern"];
 const RB_FORMATS = ["unleashed", "constructed"];
@@ -389,18 +390,7 @@ const TournamentsPage: React.FC = () => {
 
   return (
     <div>
-      <h2
-        style={{
-          fontFamily: "Cinzel, serif",
-          color: T.gold,
-          fontSize: "1.15em",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          marginBottom: "1em",
-        }}
-      >
-        Tournament Results
-      </h2>
+      <PageHeader title="Tournaments" accent={accentColor} subtitle="Recent competitive results." />
 
       {/* Format filter */}
       <div style={{ display: "flex", gap: "0.4em", flexWrap: "wrap", marginBottom: "1.2em" }}>

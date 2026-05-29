@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { fetchCards, Card } from "../../api";
 import { T } from "../../theme";
+import PageHeader from "../../components/PageHeader";
 
 const TYPES = ["", "Creature", "Instant", "Sorcery", "Enchantment", "Artifact", "Land", "Planeswalker", "Battle"];
 const COLORS = [
@@ -70,7 +71,7 @@ const CardBrowserPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "1em", color: T.blue }}>MTG Cards</h1>
+      <PageHeader title="MTG Cards" accent={T.blue} />
 
       {/* Filter bar */}
       <div

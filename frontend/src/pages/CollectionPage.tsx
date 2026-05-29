@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { T, btn, panel } from "../theme";
+import PageHeader from "../components/PageHeader";
 import {
   CollectionEntry,
   fetchCollection,
@@ -110,7 +111,7 @@ const CollectionPage: React.FC = () => {
 
   return (
     <div>
-      <h1 style={{ marginBottom: "1.2em" }}>My Collection</h1>
+      <PageHeader title="My Collection" />
 
       {/* Game tabs */}
       <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: "1.8em" }}>

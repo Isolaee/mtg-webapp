@@ -1,13 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { T } from "../theme";
+import PageHeader from "../components/PageHeader";
 
 const MinigamesPage: React.FC = () => (
   <div>
-    <h1 style={{ marginBottom: "0.3em", color: T.blue }}>Minigames</h1>
-    <p style={{ color: T.textDim, marginTop: 0, marginBottom: "1.5em" }}>
-      Quick games built on the card database.
-    </p>
+    <PageHeader title="Minigames" subtitle="Quick games built on the card database." />
 
     <Link
       to="/minigames/duel"
