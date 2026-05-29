@@ -41,5 +41,13 @@ async fn migrate_columns(pool: &SqlitePool) -> anyhow::Result<()> {
     let _ = sqlx::query("ALTER TABLE users ADD COLUMN is_premium INTEGER NOT NULL DEFAULT 0")
         .execute(pool)
         .await;
+
+    // Drop the removed community-poll tables (feature deleted; card duel uses
+    // its own card_elo / card_duel_votes tables). Idempotent — safe every boot.
+    for table in ["minigame_votes", "minigame_options", "minigames"] {
+        let _ = sqlx::query(&format!("DROP TABLE IF EXISTS {table}"))
+            .execute(pool)
+            .await;
+    }
     Ok(())
 }
