@@ -30,6 +30,12 @@ async fn migrate_columns(pool: &SqlitePool) -> anyhow::Result<()> {
     let _ = sqlx::query("ALTER TABLE decks ADD COLUMN user_id TEXT")
         .execute(pool)
         .await;
+    let _ = sqlx::query("ALTER TABLE decks ADD COLUMN sideboard TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE decks ADD COLUMN maybeboard TEXT")
+        .execute(pool)
+        .await;
     let _ = sqlx::query("ALTER TABLE rb_decks ADD COLUMN user_id TEXT")
         .execute(pool)
         .await;
