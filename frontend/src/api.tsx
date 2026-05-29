@@ -558,3 +558,74 @@ export const voteMinigame = async (
   );
   return response.data;
 };
+
+// ── Card Duel ("which card is stronger?") ────────────────────────────────────
+
+export interface DuelCard {
+  card_id: string;
+  name: string;
+  image: string | null;
+  elo: number;
+}
+
+export interface DuelPair {
+  game: string;
+  format: string;
+  cards: DuelCard[];
+}
+
+export interface DuelRatingChange {
+  old: number;
+  new: number;
+}
+
+export interface DuelResult {
+  winner_card_id: string;
+  loser_card_id: string;
+  winner: DuelRatingChange;
+  loser: DuelRatingChange;
+  higher_card_id: string;
+}
+
+export interface DuelLeaderboardEntry {
+  rank: number;
+  name: string;
+  image: string | null;
+  elo: number;
+  games_played: number;
+  wins: number;
+}
+
+export const fetchDuelPair = async (game: string, format: string): Promise<DuelPair> => {
+  const response = await axios.get<DuelPair>(`${API_BASE_URL}/minigames/duel/pair`, {
+    params: { game, format },
+  });
+  return response.data;
+};
+
+export const voteDuel = async (
+  game: string,
+  format: string,
+  winnerCardId: string,
+  loserCardId: string,
+  voterKey: string,
+): Promise<DuelResult> => {
+  const response = await axios.post<DuelResult>(
+    `${API_BASE_URL}/minigames/duel/vote`,
+    { game, format, winner_card_id: winnerCardId, loser_card_id: loserCardId, voter_key: voterKey },
+    { headers: authHeaders() },
+  );
+  return response.data;
+};
+
+export const fetchDuelLeaderboard = async (
+  game: string,
+  format: string,
+  limit = 10,
+): Promise<DuelLeaderboardEntry[]> => {
+  const response = await axios.get<DuelLeaderboardEntry[]>(
+    `${API_BASE_URL}/minigames/duel/leaderboard`,
+    { params: { game, format, limit } },
+  );
+  return response.data;
+};
