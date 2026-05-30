@@ -76,6 +76,7 @@ const CollectionPage: React.FC = () => {
   const handleAdd = async () => {
     if (!selected) return;
     setAdding(true);
+    setError(null);
     try {
       await addToCollection({ game: tab, card_id: selected.id, is_foil: isFoil, treatment });
       setEntries(await fetchCollection());
@@ -84,6 +85,8 @@ const CollectionPage: React.FC = () => {
       setResults([]);
       setIsFoil(false);
       setTreatment("Normal");
+    } catch {
+      setError("Could not add card. Your session may have expired — try logging in again.");
     } finally {
       setAdding(false);
     }

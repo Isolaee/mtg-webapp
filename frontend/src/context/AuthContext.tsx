@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
-import { fetchProfile } from "../api";
+import { fetchProfile, isTokenExpired } from "../api";
 
 interface AuthContextType {
   token: string | null;
@@ -27,9 +27,14 @@ const STORAGE_KEY = "tcg_token";
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem(STORAGE_KEY),
-  );
+  const [token, setToken] = useState<string | null>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (isTokenExpired(stored)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return stored;
+  });
   const [isPremium, setIsPremium] = useState(false);
 
   const username = token ? decodeUsername(token) : null;

@@ -4,10 +4,44 @@ const API_BASE_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8080/api
 
 const STORAGE_KEY = "tcg_token";
 
+/**
+ * Returns true if the JWT is missing, malformed, or past its `exp` claim.
+ * A present-but-expired token otherwise looks "logged in" to the UI but is
+ * rejected by the backend with a 401.
+ */
+export function isTokenExpired(token: string | null): boolean {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(
+      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+    );
+    if (typeof payload.exp !== "number") return false;
+    return payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export function authHeaders(): Record<string, string> {
   const token = localStorage.getItem(STORAGE_KEY);
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+// On any 401 (expired/revoked token), drop the stale session and send the user
+// to login instead of letting the rejection surface as an uncaught error.
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem(STORAGE_KEY);
+      const onLogin = window.location.hash.startsWith("#/login");
+      if (!onLogin) {
+        window.location.hash = "#/login";
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 // ── MTG ──────────────────────────────────────────────────────────────────────
 
