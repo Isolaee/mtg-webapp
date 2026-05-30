@@ -7,6 +7,7 @@ pub struct CollectionEntry {
     pub game: String,
     pub card_id: String,
     pub is_foil: i64,
+    pub treatment: String,
     pub quantity: i64,
     pub added_at: Option<String>,
 }

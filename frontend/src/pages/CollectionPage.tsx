@@ -11,6 +11,7 @@ import {
   removeFromCollection,
   fetchCards,
   fetchRbCards,
+  TREATMENTS,
 } from "../api";
 
 type Game = "mtg" | "riftbound";
@@ -33,6 +34,7 @@ const CollectionPage: React.FC = () => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState<SearchResult | null>(null);
   const [isFoil, setIsFoil] = useState(false);
+  const [treatment, setTreatment] = useState<string>("Normal");
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -75,12 +77,13 @@ const CollectionPage: React.FC = () => {
     if (!selected) return;
     setAdding(true);
     try {
-      await addToCollection({ game: tab, card_id: selected.id, is_foil: isFoil });
+      await addToCollection({ game: tab, card_id: selected.id, is_foil: isFoil, treatment });
       setEntries(await fetchCollection());
       setSelected(null);
       setSearchName("");
       setResults([]);
       setIsFoil(false);
+      setTreatment("Normal");
     } finally {
       setAdding(false);
     }
@@ -235,6 +238,26 @@ const CollectionPage: React.FC = () => {
             <span style={{ color: isFoil ? T.gold : T.textDim }}>Foil</span>
           </label>
 
+          <label style={{ display: "flex", alignItems: "center", gap: "0.4em", fontSize: 13 }}>
+            <span style={{ color: T.textDim }}>Treatment</span>
+            <select
+              value={treatment}
+              onChange={(e) => setTreatment(e.target.value)}
+              style={{
+                padding: "0.35em 0.5em",
+                background: T.surface2,
+                color: T.text,
+                border: `1px solid ${T.border}`,
+                borderRadius: 4,
+                fontSize: 13,
+              }}
+            >
+              {TREATMENTS.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </label>
+
           <button
             onClick={handleAdd}
             disabled={!selected || adding}
@@ -326,6 +349,24 @@ const CollectionPage: React.FC = () => {
                           }}
                         >
                           Foil
+                        </span>
+                      )}
+                      {entry.treatment && entry.treatment !== "Normal" && (
+                        <span
+                          style={{
+                            marginLeft: "0.5em",
+                            fontSize: 10,
+                            padding: "1px 6px",
+                            borderRadius: 10,
+                            background: `${tabColor}22`,
+                            color: tabColor,
+                            border: `1px solid ${tabColor}55`,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {entry.treatment}
                         </span>
                       )}
                     </td>

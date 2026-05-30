@@ -246,12 +246,21 @@ export const deleteRbDeck = async (name: string): Promise<void> => {
 
 // ── Collection ───────────────────────────────────────────────────────────────
 
+export const TREATMENTS = [
+  "Normal",
+  "Showcase",
+  "Borderless",
+  "Extended Art",
+  "Retro",
+] as const;
+
 export interface CollectionEntry {
   id: number;
   user_id: string;
   game: "mtg" | "riftbound";
   card_id: string;
   is_foil: number;
+  treatment?: string;
   quantity: number;
   added_at?: string;
 }
@@ -278,6 +287,7 @@ export const addToCollection = async (entry: {
   game: "mtg" | "riftbound";
   card_id: string;
   is_foil?: boolean;
+  treatment?: string;
 }): Promise<number> => {
   const response = await axios.post<{ id: number }>(
     `${API_BASE_URL}/collection`,
@@ -289,7 +299,7 @@ export const addToCollection = async (entry: {
 
 export const updateCollectionEntry = async (
   id: number,
-  patch: { quantity?: number; is_foil?: boolean },
+  patch: { quantity?: number; is_foil?: boolean; treatment?: string },
 ): Promise<void> => {
   await axios.put(`${API_BASE_URL}/collection/${id}`, patch, {
     headers: authHeaders(),

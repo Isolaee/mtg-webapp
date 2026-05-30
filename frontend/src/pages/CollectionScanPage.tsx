@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { T, btn, panel } from "../theme";
-import { ScanMatch, scanCard, addToCollection } from "../api";
+import { ScanMatch, scanCard, addToCollection, TREATMENTS } from "../api";
 
 const SCAN_INTERVAL_MS = 1800;
+const STRONG_DISTANCE = 8; // auto-confirm threshold
+
+const matchKey = (m: ScanMatch) => `${m.game}-${m.card_id}`;
 
 const CollectionScanPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,18 +18,25 @@ const CollectionScanPage: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const busyRef = useRef(false); // prevents overlapping scan requests
+  const lastHandledRef = useRef<string | null>(null); // avoids re-prompting the same card
 
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Results
   const [matches, setMatches] = useState<ScanMatch[]>([]);
-  const [picked, setPicked] = useState<ScanMatch | null>(null);
-  const [manuallyPicked, setManuallyPicked] = useState(false);
+  const [pending, setPending] = useState<ScanMatch | null>(null); // card awaiting confirmation
   const [scanning, setScanning] = useState(false);
+
+  // Confirm-panel inputs
   const [isFoil, setIsFoil] = useState(false);
+  const [treatment, setTreatment] = useState<string>("Normal");
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+
+  // Session feedback
+  const [addedCount, setAddedCount] = useState(0);
+  const [justAdded, setJustAdded] = useState<string | null>(null);
 
   const stopCamera = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -34,7 +44,7 @@ const CollectionScanPage: React.FC = () => {
   }, []);
 
   const captureAndScan = useCallback(async () => {
-    if (busyRef.current) return;
+    if (busyRef.current || pending) return; // paused while confirming
     const video = videoRef.current;
     if (!video || video.videoWidth === 0) return;
 
@@ -50,9 +60,11 @@ const CollectionScanPage: React.FC = () => {
       const results = await scanCard(base64);
       if (results.length > 0) {
         setMatches(results);
-        if (!manuallyPicked) {
-          const preferred = preferredGame ? results.find((r) => r.game === preferredGame) : null;
-          setPicked(preferred ?? results[0]);
+        // Auto-confirm the strongest match (preferred game first) unless we just handled it.
+        const preferred = preferredGame ? results.find((r) => r.game === preferredGame) : null;
+        const best = preferred ?? results[0];
+        if (best.distance <= STRONG_DISTANCE && matchKey(best) !== lastHandledRef.current) {
+          setPending(best);
         }
       }
     } catch {
@@ -61,9 +73,9 @@ const CollectionScanPage: React.FC = () => {
       busyRef.current = false;
       setScanning(false);
     }
-  }, [manuallyPicked, preferredGame]);
+  }, [pending, preferredGame]);
 
-  // Restart interval whenever captureAndScan reference changes (manuallyPicked toggle)
+  // Restart interval whenever captureAndScan reference changes (pause/resume on confirm).
   useEffect(() => {
     if (!cameraReady) return;
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -93,19 +105,32 @@ const CollectionScanPage: React.FC = () => {
     return () => { cancelled = true; stopCamera(); };
   }, [stopCamera]);
 
-  const handlePick = (m: ScanMatch) => {
-    setPicked(m);
-    setManuallyPicked(true);
+  // Open the confirm panel for a tapped match (works for any confidence).
+  const openConfirm = (m: ScanMatch) => {
+    setPending(m);
+    setIsFoil(false);
+    setTreatment("Normal");
+    setAddError(null);
+  };
+
+  const resetConfirm = () => {
+    setPending(null);
+    setIsFoil(false);
+    setTreatment("Normal");
+    setAddError(null);
   };
 
   const handleAdd = async () => {
-    if (!picked) return;
+    if (!pending) return;
     setIsAdding(true);
     setAddError(null);
     try {
-      await addToCollection({ game: picked.game, card_id: picked.card_id, is_foil: isFoil });
-      stopCamera();
-      navigate("/collection");
+      await addToCollection({ game: pending.game, card_id: pending.card_id, is_foil: isFoil, treatment });
+      lastHandledRef.current = matchKey(pending);
+      setAddedCount((n) => n + 1);
+      setJustAdded(pending.card_name);
+      setMatches([]); // clear so the resumed scan starts fresh
+      resetConfirm();
     } catch {
       setAddError("Could not add card — try again.");
     } finally {
@@ -113,18 +138,20 @@ const CollectionScanPage: React.FC = () => {
     }
   };
 
-  const handleRescan = () => {
+  const handleSkip = () => {
+    if (pending) lastHandledRef.current = matchKey(pending);
     setMatches([]);
-    setPicked(null);
-    setManuallyPicked(false);
-    setAddError(null);
+    resetConfirm();
   };
 
   const confidenceLabel = (d: number) => {
-    if (d <= 8) return { text: "Strong", color: T.green };
+    if (d <= STRONG_DISTANCE) return { text: "Strong", color: T.green };
     if (d <= 18) return { text: "Possible", color: T.gold };
     return { text: "Weak", color: T.textDim };
   };
+
+  const pendingConf = pending ? confidenceLabel(pending.distance) : null;
+  const pendingAccent = pending?.game === "riftbound" ? T.purple : T.blue;
 
   return (
     <div style={{ maxWidth: 520, margin: "0 auto" }}>
@@ -154,8 +181,13 @@ const CollectionScanPage: React.FC = () => {
             {preferredGame === "riftbound" ? "Riftbound" : "MTG"}
           </span>
         )}
-        {scanning && (
-          <span style={{ marginLeft: "auto", fontSize: 12, color: T.textDim, letterSpacing: "0.04em" }}>
+        {addedCount > 0 && (
+          <span style={{ marginLeft: "auto", fontSize: 12, color: T.green, fontWeight: 600 }}>
+            {addedCount} added
+          </span>
+        )}
+        {scanning && !pending && (
+          <span style={{ marginLeft: addedCount > 0 ? "0.6em" : "auto", fontSize: 12, color: T.textDim, letterSpacing: "0.04em" }}>
             scanning…
           </span>
         )}
@@ -208,7 +240,7 @@ const CollectionScanPage: React.FC = () => {
                 textShadow: "0 1px 4px #000",
               }}
             >
-              Centre the card art in the frame
+              {pending ? "Scanning paused — confirm below" : "Centre the card art in the frame"}
             </div>
           </>
         )}
@@ -250,29 +282,127 @@ const CollectionScanPage: React.FC = () => {
         )}
       </div>
 
-      {/* Match list */}
-      {matches.length > 0 && (
+      {/* Confirm panel — appears when a card is detected (auto) or tapped (manual) */}
+      {pending && (
+        <div style={{ ...panel, border: `2px solid ${pendingAccent}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.8em", marginBottom: "1em" }}>
+            {pending.image && (
+              <img
+                src={pending.image}
+                alt={pending.card_name}
+                style={{ height: 72, borderRadius: 4, flexShrink: 0 }}
+              />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, color: T.textBright, fontSize: "1em" }}>
+                {pending.card_name}
+              </div>
+              <div style={{ fontSize: 11, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>
+                {pending.game === "mtg" ? "MTG" : "Riftbound"}
+              </div>
+              {pendingConf && (
+                <div style={{ fontSize: 11, fontWeight: 600, color: pendingConf.color, marginTop: 3 }}>
+                  {pendingConf.text} match · dist {pending.distance}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Foil */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5em",
+              cursor: "pointer",
+              marginBottom: "0.8em",
+              fontSize: 14,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isFoil}
+              onChange={(e) => setIsFoil(e.target.checked)}
+              style={{ width: 15, height: 15 }}
+            />
+            <span style={{ color: isFoil ? T.gold : T.textDim }}>Foil</span>
+            <span style={{ color: T.textDim, fontSize: 11, marginLeft: "0.2em" }}>
+              (override — camera can't detect foiling)
+            </span>
+          </label>
+
+          {/* Treatment */}
+          <label style={{ display: "flex", alignItems: "center", gap: "0.6em", marginBottom: "1em", fontSize: 14 }}>
+            <span style={{ color: T.textDim }}>Treatment</span>
+            <select
+              value={treatment}
+              onChange={(e) => setTreatment(e.target.value)}
+              style={{
+                flex: 1,
+                padding: "0.4em 0.5em",
+                background: T.surface2,
+                color: T.textBright,
+                border: `1px solid ${T.border}`,
+                borderRadius: 5,
+                fontSize: 14,
+              }}
+            >
+              {TREATMENTS.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </label>
+
+          {addError && (
+            <p style={{ color: T.red, fontSize: 12, marginBottom: "0.6em" }}>{addError}</p>
+          )}
+
+          <div style={{ display: "flex", gap: "0.6em" }}>
+            <button
+              onClick={handleAdd}
+              disabled={isAdding}
+              style={{
+                ...btn.primary(pendingAccent),
+                flex: 1,
+                fontSize: "0.9em",
+                padding: "0.6em 0",
+              }}
+            >
+              {isAdding ? "Adding…" : "Add"}
+            </button>
+            <button
+              onClick={handleSkip}
+              disabled={isAdding}
+              style={{ ...btn.ghost(), fontSize: "0.9em", padding: "0.6em 1.2em" }}
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Match list — fallback for manual selection while not confirming */}
+      {!pending && matches.length > 0 && (
         <>
           <p style={{ color: T.textDim, fontSize: 12, marginBottom: "0.5em", letterSpacing: "0.03em" }}>
-            {manuallyPicked ? "Your selection:" : "Best matches — tap to select:"}
+            Best matches — tap to add:
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5em", marginBottom: "1em" }}>
             {matches.map((m) => {
               const conf = confidenceLabel(m.distance);
-              const isSelected = picked?.card_id === m.card_id && picked?.game === m.game;
               const accent = m.game === "mtg" ? T.blue : T.purple;
               return (
                 <div
                   key={`${m.game}-${m.card_id}`}
-                  onClick={() => handlePick(m)}
+                  onClick={() => openConfirm(m)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "0.8em",
                     padding: "0.65em 0.9em",
                     background: T.surface,
-                    border: isSelected ? `2px solid ${accent}` : `1px solid ${T.border}`,
+                    border: `1px solid ${T.border}`,
                     borderRadius: 6,
                     cursor: "pointer",
                   }}
@@ -305,67 +435,19 @@ const CollectionScanPage: React.FC = () => {
                     <div style={{ fontSize: 11, fontWeight: 600, color: conf.color }}>{conf.text}</div>
                     <div style={{ fontSize: 10, color: T.textDim, marginTop: 1 }}>dist {m.distance}</div>
                   </div>
+                  <span style={{ color: accent, fontSize: 18, fontWeight: 700, flexShrink: 0 }}>+</span>
                 </div>
               );
             })}
           </div>
-
-          {/* Foil + add */}
-          <div style={{ ...panel }}>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5em",
-                cursor: "pointer",
-                marginBottom: "0.9em",
-                fontSize: 14,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={isFoil}
-                onChange={(e) => setIsFoil(e.target.checked)}
-                style={{ width: 15, height: 15 }}
-              />
-              <span style={{ color: isFoil ? T.gold : T.textDim }}>Foil</span>
-              <span style={{ color: T.textDim, fontSize: 11, marginLeft: "0.2em" }}>
-                (override — camera can't detect foiling)
-              </span>
-            </label>
-
-            {addError && (
-              <p style={{ color: T.red, fontSize: 12, marginBottom: "0.6em" }}>{addError}</p>
-            )}
-
-            <div style={{ display: "flex", gap: "0.6em" }}>
-              <button
-                onClick={handleAdd}
-                disabled={!picked || isAdding}
-                style={{
-                  ...btn.primary(picked?.game === "riftbound" ? T.purple : T.blue),
-                  flex: 1,
-                  fontSize: "0.88em",
-                  padding: "0.55em 0",
-                  opacity: !picked ? 0.5 : 1,
-                }}
-              >
-                {isAdding ? "Adding…" : "Add to Collection"}
-              </button>
-              <button
-                onClick={handleRescan}
-                style={{ ...btn.ghost(), fontSize: "0.88em", padding: "0.55em 1em" }}
-              >
-                Clear
-              </button>
-            </div>
-          </div>
         </>
       )}
 
-      {cameraReady && matches.length === 0 && !scanning && (
+      {cameraReady && !pending && matches.length === 0 && (
         <p style={{ color: T.textDim, fontSize: 13, textAlign: "center", marginTop: "0.5em" }}>
-          Scanning continuously — hold a card steady in the frame.
+          {justAdded
+            ? `Added “${justAdded}” ✓ — scanning for the next card…`
+            : "Scanning continuously — hold a card steady in the frame."}
         </p>
       )}
     </div>

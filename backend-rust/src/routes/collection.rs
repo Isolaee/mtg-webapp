@@ -45,6 +45,7 @@ struct AddInput {
     game: String,
     card_id: String,
     is_foil: Option<bool>,
+    treatment: Option<String>,
 }
 
 async fn add_to_collection(
@@ -57,7 +58,8 @@ async fn add_to_collection(
         Err(r) => return r,
     };
     let is_foil = input.is_foil.unwrap_or(false);
-    match db::collection::upsert(&pool, &user, &input.game, &input.card_id, is_foil).await {
+    let treatment = input.treatment.unwrap_or_else(|| "Normal".into());
+    match db::collection::upsert(&pool, &user, &input.game, &input.card_id, is_foil, &treatment).await {
         Ok(id) => (StatusCode::CREATED, Json(json!({"id": id}))).into_response(),
         Err(e) => {
             tracing::error!("add_to_collection db error: {e}");
@@ -70,6 +72,7 @@ async fn add_to_collection(
 struct UpdateInput {
     quantity: Option<i64>,
     is_foil: Option<bool>,
+    treatment: Option<String>,
 }
 
 async fn update_entry(
@@ -82,11 +85,18 @@ async fn update_entry(
         Ok(u) => u,
         Err(r) => return r,
     };
-    if input.quantity.is_none() && input.is_foil.is_none() {
+    if input.quantity.is_none() && input.is_foil.is_none() && input.treatment.is_none() {
         return (StatusCode::BAD_REQUEST, Json(json!({"msg": "Nothing to update"}))).into_response();
     }
-    match db::collection::update_by_id_and_user(&pool, id, &user, input.quantity, input.is_foil)
-        .await
+    match db::collection::update_by_id_and_user(
+        &pool,
+        id,
+        &user,
+        input.quantity,
+        input.is_foil,
+        input.treatment,
+    )
+    .await
     {
         Ok(1..) => Json(json!({"msg": "Updated"})).into_response(),
         Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Entry not found"}))).into_response(),
