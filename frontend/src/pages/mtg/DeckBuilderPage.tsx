@@ -12,6 +12,7 @@ import {
   fetchMtgDeckList,
   fetchMtgDeck,
   saveMtgDeck,
+  authHeaders,
 } from "../../api";
 import UpgradesModal from "../../components/UpgradesModal";
 import { useAuth } from "../../context/AuthContext";
@@ -176,16 +177,33 @@ const DeckBuilderPage: React.FC = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/upload_deck`, {
         method: "POST",
+        headers: authHeaders(),
         body: formData,
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const msg = await res.json().catch(() => null);
+        window.alert(
+          res.status === 401
+            ? "Log in to import a deck."
+            : msg?.msg ?? "Failed to import deck.",
+        );
+        e.target.value = "";
+        return;
+      }
       const data = await res.json();
       if (data.name && !deckName) setDeckName(data.name);
       if (data.commander) setCommander(data.commander);
       setDeck(groupEntries(data.cards ?? []));
       setSideboard(groupEntries(data.sideboard ?? []));
       setMaybeboard(groupEntries(data.maybeboard ?? []));
-    } catch {}
+      const loaded =
+        (data.cards?.length ?? 0) +
+        (data.sideboard?.length ?? 0) +
+        (data.maybeboard?.length ?? 0);
+      window.alert(`Imported ${loaded} card${loaded === 1 ? "" : "s"}.`);
+    } catch {
+      window.alert("Failed to import deck.");
+    }
     // reset file input so the same file can be re-imported
     e.target.value = "";
   };
