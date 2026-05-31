@@ -23,9 +23,14 @@ Thumbs.db
 .env
 .env.*
 
-# Beads / Dolt files (added by bd init)
+# Beads / Dolt — issue tracking is LOCAL ONLY; nothing under .beads is tracked.
 .dolt/
 .beads-credential-key
+.beads/
+
+# Local-only design docs / planning (not part of the shipped repo)
+/Diagrams/
+/SETUP-PLAN.md
 
 # Python bytecode
 __pycache__/

@@ -37,9 +37,10 @@ bd close <id>         # Complete work
    git push
    git status  # MUST show "up to date with origin"
    ```
-   > **Dolt stays local.** Do NOT run `bd dolt push`. Beads uses an embedded
-   > Dolt engine with no remotes; issue state travels via the git-tracked
-   > `.beads/issues.jsonl` export only.
+   > **Beads is LOCAL ONLY.** The entire `.beads/` directory is gitignored and
+   > NOT tracked — issue state does not travel via git and is not shared across
+   > machines. Do NOT run `bd dolt push` (embedded Dolt has no remotes). Use `bd`
+   > for local task tracking; nothing under `.beads/` gets committed or pushed.
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
