@@ -79,6 +79,25 @@ npm run build
 npm test
 ```
 
+### End-to-End Tests — Playwright (`e2e/`)
+
+Browser-driven tests for the primary user journeys (auth + nav, card browsing,
+deck-builder gating, collection). `playwright.config.ts` auto-starts both the
+backend (`cargo run --bin tcg-backend` with `DATABASE_URL`/`JWT_SECRET`) and the
+frontend (`npm start`), reusing them if already running locally.
+
+```bash
+cd e2e
+npm install
+npx playwright install chromium   # one-time
+npx playwright test               # runs the whole suite headless
+npm run test:ui                   # interactive mode
+```
+
+Notes: the app uses HashRouter (`/#/path`); tests register unique users per run
+(no DB teardown); MTG card data is assumed seeded, Riftbound data is treated as
+optional; the native-only Scan page is excluded. See `e2e/README.md`.
+
 ### Android App — Capacitor (`frontend/`)
 
 Prerequisites: [Android Studio](https://developer.android.com/studio) with SDK + Java 17+
