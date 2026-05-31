@@ -21,7 +21,6 @@ const cardImg = (card: RbCard) => card.image_medium ?? card.image ?? "";
 const cardImgLarge = (card: RbCard) => card.image_large ?? card.image_medium ?? card.image ?? "";
 
 const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeDeck, battlefields }) => {
-  const [highlighted, setHighlighted] = useState<string | null>(null);
   // Tapping a card opens a full-image modal so the card is readable on touch.
   const [modal, setModal] = useState<{ src: string; alt: string } | null>(null);
   const openModal = (card: RbCard) => {
@@ -87,7 +86,7 @@ const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeD
                   </h4>
                   <div style={{ position: "relative", width: 80, height: 140 + (entries.length - 1) * 30 }}>
                     {entries.map(({ card, count }, idx) => (
-                      <CardSlot key={card.id} card={card} count={count} idx={idx} highlighted={highlighted} onHighlight={setHighlighted} onOpen={openModal} />
+                      <CardSlot key={card.id} card={card} count={count} idx={idx} onOpen={openModal} />
                     ))}
                   </div>
                 </div>
@@ -139,18 +138,14 @@ const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeD
   );
 };
 
-const CardSlot: React.FC<{ card: RbCard; count: number; idx: number; highlighted: string | null; onHighlight: (id: string | null) => void; onOpen: (card: RbCard) => void }> = ({ card, count, idx, highlighted, onHighlight, onOpen }) => {
-  const isHighlighted = highlighted === card.id;
+const CardSlot: React.FC<{ card: RbCard; count: number; idx: number; onOpen: (card: RbCard) => void }> = ({ card, count, idx, onOpen }) => {
   return (
-    <div style={{ position: "absolute", top: idx * 30, left: isHighlighted ? 20 : 0, width: 80, zIndex: isHighlighted ? 1000 : idx + 1, transition: "left 0.15s" }}>
+    <div style={{ position: "absolute", top: idx * 30, left: 0, width: 80, zIndex: idx + 1 }}>
       <img
         src={cardImg(card)}
         alt={card.name}
-        onClick={() => {
-          onHighlight(isHighlighted ? null : card.id);
-          onOpen(card);
-        }}
-        style={{ width: 80, height: 120, objectFit: "cover", borderRadius: 8, border: isHighlighted ? `3px solid ${T.purple}` : `2px solid ${T.border}`, boxShadow: isHighlighted ? `0 0 12px ${T.purple}` : "0 2px 6px #00000066", cursor: "pointer", display: "block", background: T.surface2, transition: "border 0.15s, box-shadow 0.15s" }}
+        onClick={() => onOpen(card)}
+        style={{ width: 80, height: 120, objectFit: "cover", borderRadius: 8, border: `2px solid ${T.border}`, boxShadow: "0 2px 6px #00000066", cursor: "pointer", display: "block", background: T.surface2 }}
         title={`${card.name}${count > 1 ? ` ×${count}` : ""}`}
       />
       {count > 1 && <CountBadge count={count} />}
