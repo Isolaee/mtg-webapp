@@ -39,11 +39,13 @@ const bestMatch = (pathname: string, links: { to: string }[]): string | undefine
   return matches.sort((a, b) => b.length - a.length)[0];
 };
 
-// Routes (and their sub-routes) that belong to no single game — the game sub-nav
-// is hidden here and neither game tab is forced active.
-const NEUTRAL_PREFIXES = ["/my-decks", "/collection", "/minigames", "/profile", "/login", "/privacy", "/test"];
-const isNeutralPath = (pathname: string) =>
-  pathname === "/" || NEUTRAL_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+// MTG-specific routes (and their sub-routes). Used to decide when the MTG game tab
+// + sub-nav are shown. Anything that is neither an MTG path nor a Riftbound path
+// (home, neutral pages, unknown/404 URLs) renders with no game sub-nav and no game
+// tab forced active.
+const MTG_PREFIXES = ["/cards", "/deck-builder", "/deck", "/tournaments", "/deck-analysis"];
+const isMtgPath = (pathname: string) =>
+  MTG_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 const Nav: React.FC = () => {
   const { pathname } = useLocation();
@@ -51,8 +53,7 @@ const Nav: React.FC = () => {
   const { username, logout } = useAuth();
 
   const isRiftbound = pathname.startsWith("/riftbound");
-  const isNeutral = isNeutralPath(pathname);
-  const isMtg = !isRiftbound && !isNeutral;
+  const isMtg = !isRiftbound && isMtgPath(pathname);
   const showSubNav = isMtg || isRiftbound;
 
   const subLinks = isRiftbound ? RB_LINKS : MTG_LINKS;

@@ -13,7 +13,6 @@ import LoginPage from "./pages/LoginPage";
 import MtgDeckBuilderPage from "./pages/mtg/DeckBuilderPage";
 import MtgPublicDeckPage from "./pages/mtg/PublicDeckPage";
 import MtgCardBrowserPage from "./pages/mtg/CardBrowserPage";
-import TestPage from "./pages/TestPage";
 import CardBrowserPage from "./pages/riftbound/CardBrowserPage";
 import RbDeckBuilderPage from "./pages/riftbound/DeckBuilderPage";
 import MyDecksPage from "./pages/MyDecksPage";
@@ -25,6 +24,7 @@ import DeckAnalysisPage from "./pages/mtg/DeckAnalysisPage";
 import MinigamesPage from "./pages/MinigamesPage";
 import CardDuelPage from "./pages/minigames/CardDuelPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 const SLOT_ID_LEADERBOARD = "XXXXXXXXXX"; // replace with AdSense leaderboard ad unit slot ID
 
@@ -44,7 +44,6 @@ const AppInner: React.FC = () => {
             <Route path="/deck-builder" element={<MtgDeckBuilderPage />} />
             {/* Public read-only shared deck view (no auth) */}
             <Route path="/deck/public/:slug" element={<MtgPublicDeckPage />} />
-            <Route path="/test" element={<TestPage />} />
             <Route
               path="/my-decks"
               element={
@@ -97,6 +96,8 @@ const AppInner: React.FC = () => {
             <Route path="/minigames/duel" element={<CardDuelPage />} />
             {/* Legal */}
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            {/* Catch-all 404 */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </ErrorBoundary>
       </div>
