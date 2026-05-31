@@ -180,8 +180,17 @@ jobs:
             aws s3 cp "backend-rust/target/aarch64-unknown-linux-musl/release/$bin" \
               "s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/$bin"
           done
-          aws s3 cp database/mtg_card_db.db \
-            s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/mtg_card_db.db
+          # The card DB is NOT tracked in git. It lives in S3 at
+          # deploy/mtg_card_db.db and is uploaded out-of-band (one-time seed /
+          # data refresh), not from the repo. The instance pulls it below only
+          # when it has no DB yet. To refresh prod data, upload a new DB to that
+          # key directly:
+          #   aws s3 cp <db> s3://${{ needs.infra.outputs.frontend-bucket }}/deploy/mtg_card_db.db
+          if ! aws s3api head-object \
+              --bucket "${{ needs.infra.outputs.frontend-bucket }}" \
+              --key deploy/mtg_card_db.db >/dev/null 2>&1; then
+            echo "::warning::deploy/mtg_card_db.db is missing in S3 — a fresh instance will start with no card data. Upload one to that key."
+          fi
 
       - name: Deploy via SSM
         env:

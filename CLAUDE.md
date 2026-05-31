@@ -55,6 +55,18 @@ bd close <id>         # Complete work
 
 ## Build & Run
 
+> **The card DB is not tracked in git.** `database/*.db` is gitignored. A fresh
+> clone has no `database/mtg_card_db.db`, so create one before running the
+> backend locally:
+> - **Full data** — pull a copy from S3 (e.g.
+>   `aws s3 cp s3://<frontend-bucket>/deploy/mtg_card_db.db database/mtg_card_db.db`,
+>   or from the `tcg-db-backups-<account>` backup bucket).
+> - **Minimal** — `python3 e2e/scripts/seed_db.py database/mtg_card_db.db`
+>   builds a tiny DB (a few cards) from `e2e/seed.sql` — enough to boot the app.
+>
+> Production seeds the DB from S3 (`deploy/mtg_card_db.db`); the e2e suite seeds
+> its own throwaway DB from `e2e/seed.sql`. Neither uses a committed `.db`.
+
 ### Rust Backend (`backend-rust/`)
 
 ```bash

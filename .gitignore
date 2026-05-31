@@ -33,3 +33,11 @@ __pycache__/
 
 # Test tooling binaries
 /geckodriver
+
+# SQLite databases — never tracked. Production seeds from S3
+# (s3://<frontend-bucket>/deploy/mtg_card_db.db); e2e seeds from e2e/seed.sql;
+# for local dev, pull a copy from S3 or build a minimal one with
+# `python3 e2e/scripts/seed_db.py database/mtg_card_db.db`.
+database/*.db
+database/*.db-wal
+database/*.db-shm
