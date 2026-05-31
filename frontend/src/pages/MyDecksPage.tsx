@@ -10,12 +10,16 @@ import {
 } from "../api";
 import { T } from "../theme";
 import PageHeader from "../components/PageHeader";
+import { useAuth } from "../context/AuthContext";
+import CreateDeckModal, { CreateDeckMeta } from "../components/CreateDeckModal";
 
 type Tab = "mtg" | "riftbound";
 
 const MyDecksPage: React.FC = () => {
   const navigate = useNavigate();
+  const { username } = useAuth();
   const [tab, setTab] = useState<Tab>("mtg");
+  const [createOpen, setCreateOpen] = useState(false);
   const [mtgDecks, setMtgDecks] = useState<MtgDeckSummary[]>([]);
   const [rbDecks, setRbDecks] = useState<RbDeckSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,12 +54,31 @@ const MyDecksPage: React.FC = () => {
     setRbDecks((prev) => prev.filter((d) => d.name !== name));
   };
 
-  const createDeck = () =>
-    navigate(tab === "mtg" ? "/deck-builder" : "/riftbound/deck-builder");
+  const createDeck = () => setCreateOpen(true);
+
+  const handleCreate = (meta: CreateDeckMeta) => {
+    const params = new URLSearchParams({ new: "1" });
+    if (meta.name) params.set("name", meta.name);
+    if (meta.description) params.set("description", meta.description);
+    if (tab === "mtg") {
+      params.set("format", meta.format);
+      if (meta.isPublic) params.set("public", "1");
+    }
+    const base = tab === "mtg" ? "/deck-builder" : "/riftbound/deck-builder";
+    navigate(`${base}?${params.toString()}`);
+  };
 
   return (
     <div>
       <PageHeader title="My Decks" />
+
+      <CreateDeckModal
+        isOpen={createOpen}
+        game={tab}
+        loggedIn={!!username}
+        onClose={() => setCreateOpen(false)}
+        onCreate={handleCreate}
+      />
 
       {/* Tabs + Create Deck CTA */}
       <div style={{ display: "flex", alignItems: "center", borderBottom: `1px solid ${T.border}`, marginBottom: "1.8em" }}>
