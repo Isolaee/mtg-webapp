@@ -19,12 +19,26 @@ npx playwright test
 `playwright.config.ts` auto-starts **both** servers (and reuses them if already
 running locally):
 
-- **Backend** — `cargo run` in `../backend-rust` with
-  `DATABASE_URL=sqlite:../database/mtg_card_db.db` and a test `JWT_SECRET`,
-  ready when `http://localhost:8080/health` returns. The first run compiles the
-  backend, so allow a few minutes.
+- **Backend** — `scripts/run-backend.sh`, which **seeds a throwaway SQLite DB**
+  (`e2e/.tmp/e2e.db`) from the version-controlled `seed.sql`, points
+  `DATABASE_URL` at it, and runs `cargo run --bin tcg-backend`. Ready when
+  `http://localhost:8080/health` returns. The first run compiles the backend, so
+  allow a few minutes. **No real/tracked database is ever touched.**
 - **Frontend** — `npm start` in `../frontend` (CRA dev server on :3000), which
   reads `REACT_APP_API_URL` from `frontend/.env.development`.
+
+### The seed DB
+
+`seed.sql` creates the three tables the backend assumes already exist (`cards`,
+`users`, `decks`) and inserts a handful of stable MTG cards (Lightning Bolt, Sol
+Ring, …) for the search specs. Everything else (collection, card_hashes, rb_*,
+tournaments, auth_tokens) is auto-created by the backend on startup. The DB is
+rebuilt fresh on every backend start by `scripts/seed_db.py` (Python stdlib
+only), so there is nothing to track and nothing to clean up.
+
+To add a card to the fixtures, append an `INSERT OR IGNORE INTO cards …` line to
+`seed.sql`. CI runs entirely from this file — it does **not** depend on any
+committed `.db` blob.
 
 Useful variants:
 
@@ -41,9 +55,9 @@ npm run report         # open the last HTML report
   teardown, so usernames must not collide. Auth specs exercise the login UI;
   other specs register via the API and seed the JWT into `localStorage` for
   speed (and to stay under the 10-requests/60s register rate limit).
-- **MTG** card data (34k cards) is assumed present. **Riftbound** data may be
-  unseeded locally, so those assertions only check the page/controls work, not a
-  specific result count.
+- **MTG** card data comes from `seed.sql` (a few fixed cards). **Riftbound** data
+  is empty in the seed, so those assertions only check the page/controls work,
+  not a specific result count.
 - The collection **Scan** page is native-only (Capacitor camera) and is excluded
   from these web tests.
 - These specs live outside `frontend/` so they don't collide with CRA's Jest
