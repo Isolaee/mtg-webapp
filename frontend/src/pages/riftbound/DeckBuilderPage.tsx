@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   fetchRbCards,
   fetchRbCard,
@@ -198,6 +198,11 @@ const DeckBuilderPage: React.FC = () => {
         {saveMsg && (
           <span style={{ fontSize: 13, color: saveMsg === "Deck saved!" ? T.green : T.red }}>
             {saveMsg}
+            {saveMsg === "Deck saved!" && (
+              <Link to="/my-decks" style={{ marginLeft: "0.6em", color: T.gold, fontWeight: 600 }}>
+                View in My Decks →
+              </Link>
+            )}
           </span>
         )}
         {!username && (
