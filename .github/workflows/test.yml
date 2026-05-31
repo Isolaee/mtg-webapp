@@ -1,0 +1,33 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend-rust
+
+      # Runtime sqlx (no query! macros), so no DB is needed to compile or run the
+      # unit tests. --lib --bins skips doctests (there are none meaningful).
+      - name: cargo test
+        working-directory: backend-rust
+        env:
+          SQLX_OFFLINE: "true"
+        run: cargo test --lib --bins
