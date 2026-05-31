@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { T } from "../theme";
+import CardImageModal from "./CardImageModal";
 
 interface Card {
   name: string;
@@ -26,8 +27,9 @@ function getMajorType(card: Card): string | null {
 }
 
 const StackVisualizer: React.FC<StackVisualizerProps> = ({ cards, format, commanderName }) => {
-  const [highlighted, setHighlighted] = useState<string | null>(null);
   const [view, setView] = useState<"stack" | "grid">("stack");
+  // Tapping a card opens a full-image modal so the card is readable on touch.
+  const [modal, setModal] = useState<{ src: string; alt: string } | null>(null);
 
   const showCommander = format === "commander" && commanderName;
   const commanderCard = showCommander
@@ -84,7 +86,8 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({ cards, format, comman
             <img
               src={commanderCard.image}
               alt={commanderCard.name}
-              style={{ border: `3px solid ${T.gold}`, borderRadius: 8, boxShadow: `0 0 16px ${T.gold}88`, width: 100, height: 140, background: T.surface2, marginBottom: 4 }}
+              onClick={() => commanderCard.image && setModal({ src: commanderCard.image, alt: commanderCard.name })}
+              style={{ border: `3px solid ${T.gold}`, borderRadius: 8, boxShadow: `0 0 16px ${T.gold}88`, width: 100, height: 140, background: T.surface2, marginBottom: 4, cursor: "pointer" }}
               title={commanderCard.name}
             />
             <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{commanderCard.name}</div>
@@ -107,13 +110,13 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({ cards, format, comman
                   {uniqueCards.map(({ card, count }, idx) => (
                     <div
                       key={card.name}
-                      style={{ position: "absolute", top: idx * 30, left: highlighted === card.name ? 20 : 0, width: 80, zIndex: highlighted === card.name ? 1000 : 1, transition: "left 0.2s" }}
+                      style={{ position: "absolute", top: idx * 30, left: 0, width: 80, zIndex: idx + 1 }}
                     >
                       <img
                         src={card.image}
                         alt={card.name}
-                        onClick={() => setHighlighted(highlighted === card.name ? null : card.name)}
-                        style={{ border: highlighted === card.name ? `3px solid ${T.blue}` : `2px solid ${T.border}`, borderRadius: 8, boxShadow: highlighted === card.name ? `0 0 12px ${T.blue}` : "0 2px 6px #00000066", cursor: "pointer", width: 80, height: 120, background: T.surface2, transition: "border 0.2s, box-shadow 0.2s", display: "block" }}
+                        onClick={() => card.image && setModal({ src: card.image, alt: card.name })}
+                        style={{ border: `2px solid ${T.border}`, borderRadius: 8, boxShadow: "0 2px 6px #00000066", cursor: "pointer", width: 80, height: 120, background: T.surface2, display: "block" }}
                         title={card.name}
                       />
                       {count > 1 && (
@@ -144,7 +147,8 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({ cards, format, comman
                       <img
                         src={card.image}
                         alt={card.name}
-                        style={{ width: 80, height: 120, borderRadius: 8, border: `2px solid ${T.border}`, boxShadow: "0 2px 6px #00000066", background: T.surface2, display: "block" }}
+                        onClick={() => card.image && setModal({ src: card.image, alt: card.name })}
+                        style={{ width: 80, height: 120, borderRadius: 8, border: `2px solid ${T.border}`, boxShadow: "0 2px 6px #00000066", background: T.surface2, display: "block", cursor: "pointer" }}
                         title={card.name}
                       />
                       {count > 1 && (
@@ -159,6 +163,10 @@ const StackVisualizer: React.FC<StackVisualizerProps> = ({ cards, format, comman
             );
           })}
         </div>
+      )}
+
+      {modal && (
+        <CardImageModal src={modal.src} alt={modal.alt} onClose={() => setModal(null)} />
       )}
     </div>
   );

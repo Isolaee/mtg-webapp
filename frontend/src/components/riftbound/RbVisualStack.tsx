@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { RbCard } from "../../api";
 import { T } from "../../theme";
+import CardImageModal from "../CardImageModal";
 
 export interface DeckEntry {
   card: RbCard;
@@ -16,9 +17,16 @@ interface RbVisualStackProps {
 
 const MAIN_TYPES = ["Unit", "Spell", "Gear"];
 const cardImg = (card: RbCard) => card.image_medium ?? card.image ?? "";
+// Prefer the largest available art for the full-screen modal.
+const cardImgLarge = (card: RbCard) => card.image_large ?? card.image_medium ?? card.image ?? "";
 
 const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeDeck, battlefields }) => {
-  const [highlighted, setHighlighted] = useState<string | null>(null);
+  // Tapping a card opens a full-image modal so the card is readable on touch.
+  const [modal, setModal] = useState<{ src: string; alt: string } | null>(null);
+  const openModal = (card: RbCard) => {
+    const src = cardImgLarge(card);
+    if (src) setModal({ src, alt: card.name });
+  };
 
   if (!champion && mainDeck.length === 0 && runeDeck.length === 0) return null;
 
@@ -44,7 +52,8 @@ const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeD
             <img
               src={cardImg(champion)}
               alt={champion.name}
-              style={{ border: `3px solid ${T.purple}`, borderRadius: 8, boxShadow: `0 0 16px ${T.purple}88`, width: 100, height: 140, objectFit: "cover", background: T.surface2, display: "block" }}
+              onClick={() => openModal(champion)}
+              style={{ border: `3px solid ${T.purple}`, borderRadius: 8, boxShadow: `0 0 16px ${T.purple}88`, width: 100, height: 140, objectFit: "cover", background: T.surface2, display: "block", cursor: "pointer" }}
               title={champion.name}
             />
             <div style={{ fontSize: 12, fontWeight: 500, marginTop: 4, color: T.text }}>{champion.name}</div>
@@ -77,7 +86,7 @@ const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeD
                   </h4>
                   <div style={{ position: "relative", width: 80, height: 140 + (entries.length - 1) * 30 }}>
                     {entries.map(({ card, count }, idx) => (
-                      <CardSlot key={card.id} card={card} count={count} idx={idx} highlighted={highlighted} onHighlight={setHighlighted} />
+                      <CardSlot key={card.id} card={card} count={count} idx={idx} onOpen={openModal} />
                     ))}
                   </div>
                 </div>
@@ -97,7 +106,7 @@ const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeD
             {runeDeck.map(({ card, count }) => (
               <div key={card.id} style={{ textAlign: "center" }}>
                 <div style={{ position: "relative", display: "inline-block" }}>
-                  <img src={cardImg(card)} alt={card.name} style={{ width: 56, height: 80, objectFit: "cover", borderRadius: 5, border: `2px solid ${T.purple}55`, boxShadow: "0 1px 4px #00000066", display: "block" }} title={card.name} />
+                  <img src={cardImg(card)} alt={card.name} onClick={() => openModal(card)} style={{ width: 56, height: 80, objectFit: "cover", borderRadius: 5, border: `2px solid ${T.purple}55`, boxShadow: "0 1px 4px #00000066", display: "block", cursor: "pointer" }} title={card.name} />
                   {count > 1 && <CountBadge count={count} />}
                 </div>
                 <div style={{ fontSize: 10, marginTop: 2, maxWidth: 56, lineHeight: 1.2, color: T.textDim }}>{card.name}</div>
@@ -114,26 +123,29 @@ const RbVisualStack: React.FC<RbVisualStackProps> = ({ champion, mainDeck, runeD
           <div style={{ display: "flex", gap: "0.75em", flexWrap: "wrap" }}>
             {battlefields.map((card) => (
               <div key={card.id} style={{ textAlign: "center" }}>
-                <img src={cardImg(card)} alt={card.name} style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 5, border: `2px solid ${T.border}`, boxShadow: "0 1px 4px #00000066", display: "block" }} title={card.name} />
+                <img src={cardImg(card)} alt={card.name} onClick={() => openModal(card)} style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 5, border: `2px solid ${T.border}`, boxShadow: "0 1px 4px #00000066", display: "block", cursor: "pointer" }} title={card.name} />
                 <div style={{ fontSize: 10, marginTop: 2, color: T.textDim }}>{card.name}</div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {modal && (
+        <CardImageModal src={modal.src} alt={modal.alt} onClose={() => setModal(null)} />
+      )}
     </div>
   );
 };
 
-const CardSlot: React.FC<{ card: RbCard; count: number; idx: number; highlighted: string | null; onHighlight: (id: string | null) => void }> = ({ card, count, idx, highlighted, onHighlight }) => {
-  const isHighlighted = highlighted === card.id;
+const CardSlot: React.FC<{ card: RbCard; count: number; idx: number; onOpen: (card: RbCard) => void }> = ({ card, count, idx, onOpen }) => {
   return (
-    <div style={{ position: "absolute", top: idx * 30, left: isHighlighted ? 20 : 0, width: 80, zIndex: isHighlighted ? 1000 : idx + 1, transition: "left 0.15s" }}>
+    <div style={{ position: "absolute", top: idx * 30, left: 0, width: 80, zIndex: idx + 1 }}>
       <img
         src={cardImg(card)}
         alt={card.name}
-        onClick={() => onHighlight(isHighlighted ? null : card.id)}
-        style={{ width: 80, height: 120, objectFit: "cover", borderRadius: 8, border: isHighlighted ? `3px solid ${T.purple}` : `2px solid ${T.border}`, boxShadow: isHighlighted ? `0 0 12px ${T.purple}` : "0 2px 6px #00000066", cursor: "pointer", display: "block", background: T.surface2, transition: "border 0.15s, box-shadow 0.15s" }}
+        onClick={() => onOpen(card)}
+        style={{ width: 80, height: 120, objectFit: "cover", borderRadius: 8, border: `2px solid ${T.border}`, boxShadow: "0 2px 6px #00000066", cursor: "pointer", display: "block", background: T.surface2 }}
         title={`${card.name}${count > 1 ? ` ×${count}` : ""}`}
       />
       {count > 1 && <CountBadge count={count} />}

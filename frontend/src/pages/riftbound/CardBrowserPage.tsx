@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { fetchRbCards, RbCard } from "../../api";
 import { T } from "../../theme";
 import PageHeader from "../../components/PageHeader";
+import CardImageModal from "../../components/CardImageModal";
 
 const FACTIONS = ["", "body", "calm", "chaos", "colorless", "fury", "mind", "order"];
 const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
@@ -25,6 +26,9 @@ const CardBrowserPage: React.FC = () => {
 
   const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  // Tapping a card opens a full-image modal — the touch path, since the hover
+  // preview above never fires on Android.
+  const [modal, setModal] = useState<{ src: string; alt: string } | null>(null);
 
   const search = async () => {
     setLoading(true);
@@ -131,10 +135,15 @@ const CardBrowserPage: React.FC = () => {
               gap: "0.75em",
               padding: "0.55em 1em",
               borderBottom: i < cards.length - 1 ? `1px solid ${T.border}` : "none",
+              cursor: (card.image_large ?? card.image_medium ?? card.image) ? "pointer" : "default",
             }}
             onMouseEnter={() => {
               const src = card.image_medium ?? card.image;
               src ? setPreview({ src, alt: card.name }) : setPreview(null);
+            }}
+            onClick={() => {
+              const src = card.image_large ?? card.image_medium ?? card.image;
+              if (src) setModal({ src, alt: card.name });
             }}
           >
             <span style={{ fontWeight: 600, color: T.textBright, minWidth: 160 }}>
@@ -198,6 +207,10 @@ const CardBrowserPage: React.FC = () => {
             pointerEvents: "none",
           }}
         />
+      )}
+
+      {modal && (
+        <CardImageModal src={modal.src} alt={modal.alt} onClose={() => setModal(null)} />
       )}
     </div>
   );

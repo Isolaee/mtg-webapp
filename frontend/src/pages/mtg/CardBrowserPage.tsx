@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { fetchCards, Card } from "../../api";
 import { T } from "../../theme";
 import PageHeader from "../../components/PageHeader";
+import CardImageModal from "../../components/CardImageModal";
 
 const TYPES = ["", "Creature", "Instant", "Sorcery", "Enchantment", "Artifact", "Land", "Planeswalker", "Battle"];
 const COLORS = [
@@ -30,6 +31,9 @@ const CardBrowserPage: React.FC = () => {
 
   const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  // Tapping a card opens a full-image modal — the touch path, since the hover
+  // preview above never fires on Android.
+  const [modal, setModal] = useState<{ src: string; alt: string } | null>(null);
 
   const search = async () => {
     if (!name.trim() && !cardType && !color) return;
@@ -146,8 +150,10 @@ const CardBrowserPage: React.FC = () => {
               gap: "0.75em",
               padding: "0.55em 1em",
               borderBottom: i < cards.length - 1 ? `1px solid ${T.border}` : "none",
+              cursor: card.image ? "pointer" : "default",
             }}
             onMouseEnter={() => card.image ? setPreview({ src: card.image, alt: card.name }) : setPreview(null)}
+            onClick={() => card.image && setModal({ src: card.image, alt: card.name })}
           >
             <span style={{ fontWeight: 600, color: T.textBright, minWidth: 200, flex: "0 0 auto" }}>
               {card.name}
@@ -215,6 +221,10 @@ const CardBrowserPage: React.FC = () => {
             pointerEvents: "none",
           }}
         />
+      )}
+
+      {modal && (
+        <CardImageModal src={modal.src} alt={modal.alt} onClose={() => setModal(null)} />
       )}
     </div>
   );
