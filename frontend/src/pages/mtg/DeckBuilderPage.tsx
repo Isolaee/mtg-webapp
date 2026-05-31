@@ -34,6 +34,7 @@ const SIDEBOARD_FORMATS = new Set([
 ]);
 
 type Board = "main" | "side" | "maybe";
+type ExportFormat = "plain" | "arena" | "mtgo";
 
 interface DeckEntry {
   card: Card;
@@ -96,6 +97,12 @@ const DeckBuilderPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [upgradesOpen, setUpgradesOpen] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
+  const [shareSlug, setShareSlug] = useState<string | null>(null);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("plain");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
 
   const sideboardAllowed = SIDEBOARD_FORMATS.has(format);
   const setters: Record<Board, React.Dispatch<React.SetStateAction<DeckEntry[]>>> = {
@@ -127,6 +134,8 @@ const DeckBuilderPage: React.FC = () => {
     cards: Card[];
     sideboard?: Card[];
     maybeboard?: Card[];
+    is_public?: boolean;
+    share_slug?: string;
   }) => {
     setDeckName(d.name);
     setDeckDescription(d.description ?? "");
@@ -135,6 +144,8 @@ const DeckBuilderPage: React.FC = () => {
     setDeck(groupEntries(d.cards));
     setSideboard(groupEntries(d.sideboard ?? []));
     setMaybeboard(groupEntries(d.maybeboard ?? []));
+    setIsPublic(d.is_public ?? false);
+    setShareSlug(d.share_slug ?? null);
   };
 
   const openLoadPanel = async () => {
@@ -164,11 +175,11 @@ const DeckBuilderPage: React.FC = () => {
     }
   };
 
-  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Shared import path — accepts a file or a pasted-text Blob and posts it to
+  // the existing multipart /upload_deck parser. Returns true on success.
+  const submitImport = async (deckfile: Blob): Promise<boolean> => {
     const formData = new FormData();
-    formData.append("deckfile", file);
+    formData.append("deckfile", deckfile);
     formData.append("format", format);
     formData.append("deck_name", deckName);
     if (format === "commander" && commander) {
@@ -187,8 +198,7 @@ const DeckBuilderPage: React.FC = () => {
             ? "Log in to import a deck."
             : msg?.msg ?? "Failed to import deck.",
         );
-        e.target.value = "";
-        return;
+        return false;
       }
       const data = await res.json();
       if (data.name && !deckName) setDeckName(data.name);
@@ -201,11 +211,28 @@ const DeckBuilderPage: React.FC = () => {
         (data.sideboard?.length ?? 0) +
         (data.maybeboard?.length ?? 0);
       window.alert(`Imported ${loaded} card${loaded === 1 ? "" : "s"}.`);
+      return true;
     } catch {
       window.alert("Failed to import deck.");
+      return false;
     }
+  };
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await submitImport(file);
     // reset file input so the same file can be re-imported
     e.target.value = "";
+  };
+
+  const handlePasteImport = async () => {
+    if (!importText.trim()) return;
+    const ok = await submitImport(new Blob([importText], { type: "text/plain" }));
+    if (ok) {
+      setImportOpen(false);
+      setImportText("");
+    }
   };
 
   const handleAddCard = (card: Card) => {
@@ -240,6 +267,8 @@ const DeckBuilderPage: React.FC = () => {
     setAddTarget("main");
     setLoadOpen(false);
     setExportOpen(false);
+    setIsPublic(false);
+    setShareSlug(null);
   };
 
   const handleApplySwap = async (cutName: string, addName: string) => {
@@ -261,7 +290,7 @@ const DeckBuilderPage: React.FC = () => {
   const handleSave = async () => {
     if (!deckName.trim()) return;
     try {
-      await saveMtgDeck({
+      const result = await saveMtgDeck({
         name: deckName,
         format,
         description: deckDescription || undefined,
@@ -269,7 +298,9 @@ const DeckBuilderPage: React.FC = () => {
         cards: flatten(deck),
         sideboard: flatten(sideboard),
         maybeboard: flatten(maybeboard),
+        is_public: isPublic,
       });
+      if (result.share_slug) setShareSlug(result.share_slug);
       setSaveMsg("Deck saved!");
     } catch {
       setSaveMsg("Save failed.");
@@ -277,18 +308,57 @@ const DeckBuilderPage: React.FC = () => {
     setTimeout(() => setSaveMsg(null), 3000);
   };
 
-  // Plain-text decklist, round-trippable with the import parser.
-  const buildDeckText = (): string => {
-    const lines: string[] = [];
-    if (commander) lines.push(`// Commander: ${commander.name}`);
-    deck.forEach((e) => lines.push(`${e.count} ${e.card.name}`));
-    if (sideboard.length > 0) {
-      lines.push("", "Sideboard");
-      sideboard.forEach((e) => lines.push(`${e.count} ${e.card.name}`));
+  const publicShareUrl = (): string =>
+    `${window.location.origin}${window.location.pathname}#/deck/public/${shareSlug}`;
+
+  const handleCopyShareLink = async () => {
+    if (!shareSlug) return;
+    try {
+      await navigator.clipboard.writeText(publicShareUrl());
+      setShareMsg("Share link copied!");
+    } catch {
+      setShareMsg("Copy failed.");
     }
-    if (maybeboard.length > 0) {
-      lines.push("", "Maybeboard");
-      maybeboard.forEach((e) => lines.push(`${e.count} ${e.card.name}`));
+    setTimeout(() => setShareMsg(null), 3000);
+  };
+
+  // Decklist text in the selected export dialect. All variants are
+  // round-trippable with the import parser (which recognises Commander/Deck/
+  // Sideboard/Maybeboard section headers).
+  const buildDeckText = (fmt: ExportFormat = exportFormat): string => {
+    const lines: string[] = [];
+    const list = (entries: DeckEntry[]) =>
+      entries.forEach((e) => lines.push(`${e.count} ${e.card.name}`));
+
+    if (fmt === "arena") {
+      // MTG Arena: "Commander"/"Deck"/"Sideboard" sections, no maybeboard.
+      if (commander) lines.push("Commander", `1 ${commander.name}`, "");
+      lines.push("Deck");
+      list(deck);
+      if (sideboard.length > 0) {
+        lines.push("", "Sideboard");
+        list(sideboard);
+      }
+    } else if (fmt === "mtgo") {
+      // MTGO: bare quantities, sideboard separated by a blank line.
+      if (commander) lines.push(`1 ${commander.name}`);
+      list(deck);
+      if (sideboard.length > 0) {
+        lines.push("");
+        list(sideboard);
+      }
+    } else {
+      // Plain text (default).
+      if (commander) lines.push(`// Commander: ${commander.name}`);
+      list(deck);
+      if (sideboard.length > 0) {
+        lines.push("", "Sideboard");
+        list(sideboard);
+      }
+      if (maybeboard.length > 0) {
+        lines.push("", "Maybeboard");
+        list(maybeboard);
+      }
     }
     return lines.join("\n");
   };
@@ -372,6 +442,45 @@ const DeckBuilderPage: React.FC = () => {
             {saveMsg}
           </span>
         )}
+        <label
+          title={!username ? "Log in to share decks" : "Make this deck publicly viewable via a share link"}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.35em",
+            fontSize: "0.8em",
+            fontWeight: 600,
+            color: username ? T.textBright : T.textDim,
+            cursor: username ? "pointer" : "default",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={isPublic}
+            disabled={!username}
+            onChange={(e) => setIsPublic(e.target.checked)}
+          />
+          Public
+        </label>
+        {isPublic && shareSlug && (
+          <button
+            onClick={handleCopyShareLink}
+            title="Copy a public read-only link to this deck"
+            style={{
+              padding: "0.5em 1.1em",
+              background: "transparent",
+              color: T.green,
+              border: `1px solid ${T.green}66`,
+              borderRadius: 4,
+              fontWeight: 600,
+              fontSize: "0.85em",
+              cursor: "pointer",
+            }}
+          >
+            Copy Share Link
+          </button>
+        )}
+        {shareMsg && <span style={{ fontSize: 13, color: T.green }}>{shareMsg}</span>}
         {!username && (
           <span style={{ fontSize: 12, color: T.textDim, fontStyle: "italic" }}>
             Log in to save or load decks
@@ -464,6 +573,25 @@ const DeckBuilderPage: React.FC = () => {
           <input type="file" accept=".txt" onChange={handleFileImport} style={{ display: "none" }} />
         </label>
         <button
+          onClick={() => {
+            setLoadOpen(false);
+            setExportOpen(false);
+            setImportOpen((o) => !o);
+          }}
+          style={{
+            padding: "0.5em 1.1em",
+            background: "transparent",
+            color: importOpen ? T.gold : T.textDim,
+            border: `1px solid ${importOpen ? T.gold : T.border}`,
+            borderRadius: 4,
+            fontWeight: 600,
+            fontSize: "0.85em",
+            cursor: "pointer",
+          }}
+        >
+          {importOpen ? "Close Import" : "Import Text"}
+        </button>
+        <button
           onClick={handleClear}
           disabled={deckEmpty && !deckName.trim()}
           style={{
@@ -522,6 +650,33 @@ const DeckBuilderPage: React.FC = () => {
       {/* Export panel */}
       {exportOpen && (
         <div style={{ marginBottom: "1em", padding: "0.8em 1em", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6 }}>
+          <div style={{ display: "flex", gap: "0.4em", alignItems: "center", marginBottom: "0.6em", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.textDim, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Format
+            </span>
+            {([
+              { key: "plain" as ExportFormat, label: "Plain" },
+              { key: "arena" as ExportFormat, label: "Arena" },
+              { key: "mtgo" as ExportFormat, label: "MTGO" },
+            ]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setExportFormat(key)}
+                style={{
+                  padding: "0.3em 0.9em",
+                  background: exportFormat === key ? `${T.green}CC` : "transparent",
+                  color: exportFormat === key ? T.bg : T.textBright,
+                  border: `1px solid ${exportFormat === key ? T.green : T.border}`,
+                  borderRadius: 4,
+                  fontWeight: 600,
+                  fontSize: "0.8em",
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div style={{ display: "flex", gap: "0.6em", alignItems: "center", marginBottom: "0.6em", flexWrap: "wrap" }}>
             <button
               onClick={handleCopyExport}
@@ -542,6 +697,32 @@ const DeckBuilderPage: React.FC = () => {
             value={buildDeckText()}
             style={{ width: "100%", minHeight: 140, background: T.bg, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, fontFamily: "monospace", fontSize: 12, padding: "0.5em", resize: "vertical" }}
           />
+        </div>
+      )}
+
+      {/* Import-text panel */}
+      {importOpen && (
+        <div style={{ marginBottom: "1em", padding: "0.8em 1em", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6 }}>
+          <div style={{ fontSize: 12, color: T.textDim, marginBottom: "0.5em" }}>
+            Paste a decklist (e.g. <code>4 Lightning Bolt</code>). Lines under{" "}
+            <code>Sideboard</code> / <code>Maybeboard</code> headers go to those boards.
+          </div>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            placeholder={"4 Lightning Bolt\n2 Counterspell\n\nSideboard\n2 Negate"}
+            style={{ width: "100%", minHeight: 140, background: T.bg, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, fontFamily: "monospace", fontSize: 12, padding: "0.5em", resize: "vertical" }}
+          />
+          <div style={{ marginTop: "0.5em", display: "flex", gap: "0.6em", alignItems: "center" }}>
+            <button
+              onClick={handlePasteImport}
+              disabled={!importText.trim()}
+              style={{ padding: "0.45em 1.1em", background: importText.trim() ? `${T.gold}CC` : `${T.gold}33`, color: T.bg, border: `1px solid ${T.gold}88`, borderRadius: 4, fontWeight: 700, fontSize: "0.85em", cursor: importText.trim() ? "pointer" : "default" }}
+            >
+              Import
+            </button>
+            <span style={{ fontSize: 12, color: T.textDim }}>Replaces the current deck.</span>
+          </div>
         </div>
       )}
 
@@ -637,7 +818,7 @@ const DeckBuilderPage: React.FC = () => {
         </div>
       )}
 
-      <DeckStats cards={mainCards} sideboardCount={sideboardAllowed ? sideTotal : undefined} />
+      <DeckStats cards={mainCards} sideboardCount={sideboardAllowed ? sideTotal : undefined} format={format} />
       <StackVisualizer cards={mainCards} format={format} commanderName={commander?.name ?? ""} />
 
       <UpgradesModal

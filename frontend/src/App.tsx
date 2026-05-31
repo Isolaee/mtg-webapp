@@ -11,6 +11,7 @@ import { AuthProvider } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import MtgDeckBuilderPage from "./pages/mtg/DeckBuilderPage";
+import MtgPublicDeckPage from "./pages/mtg/PublicDeckPage";
 import MtgCardBrowserPage from "./pages/mtg/CardBrowserPage";
 import TestPage from "./pages/TestPage";
 import CardBrowserPage from "./pages/riftbound/CardBrowserPage";
@@ -41,6 +42,8 @@ const AppInner: React.FC = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/cards" element={<MtgCardBrowserPage />} />
             <Route path="/deck-builder" element={<MtgDeckBuilderPage />} />
+            {/* Public read-only shared deck view (no auth) */}
+            <Route path="/deck/public/:slug" element={<MtgPublicDeckPage />} />
             <Route path="/test" element={<TestPage />} />
             <Route
               path="/my-decks"

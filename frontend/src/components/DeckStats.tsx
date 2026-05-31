@@ -8,6 +8,7 @@ interface Card {
   manacost?: string;
   cardType?: string;
   typeline?: string;
+  legalities?: string;
 }
 
 const PERMANENT_TYPES = ["Creature", "Artifact", "Enchantment", "Planeswalker", "Land", "Battle"];
@@ -31,7 +32,7 @@ function isLand(card: Card) {
   return !!(card.cardType && card.cardType.toLowerCase().includes("land"));
 }
 
-const DeckStats: React.FC<{ cards: Card[]; sideboardCount?: number }> = ({ cards, sideboardCount }) => {
+const DeckStats: React.FC<{ cards: Card[]; sideboardCount?: number; format?: string }> = ({ cards, sideboardCount, format }) => {
   const cardCount = cards.length;
   if (cardCount === 0) return null;
 
@@ -75,6 +76,25 @@ const DeckStats: React.FC<{ cards: Card[]; sideboardCount?: number }> = ({ cards
       ? `Sideboard has ${sideboardCount} cards (max 15).`
       : null;
 
+  // ── Format legality (per-card Scryfall legalities JSON) ──
+  const fmtKey = format?.toLowerCase();
+  let legalityChecked = 0;
+  const illegal = new Map<string, string>(); // card name -> status (banned/restricted/not_legal)
+  if (fmtKey) {
+    for (const c of cards) {
+      if (!c.legalities) continue;
+      legalityChecked += 1;
+      try {
+        const leg = JSON.parse(c.legalities) as Record<string, string>;
+        const status = leg[fmtKey];
+        if (status && status !== "legal") illegal.set(c.name, status);
+      } catch {
+        /* ignore malformed legalities blob */
+      }
+    }
+  }
+  const illegalList = [...illegal.entries()].map(([name, status]) => ({ name, status }));
+
   return (
     <div style={{ margin: "1em 0", padding: "0.9em 1.2em", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6 }}>
       {/* Summary row */}
@@ -89,6 +109,18 @@ const DeckStats: React.FC<{ cards: Card[]; sideboardCount?: number }> = ({ cards
 
       {sideboardWarn && (
         <div style={{ marginTop: "0.6em", fontSize: 12, color: T.red }}>{sideboardWarn}</div>
+      )}
+
+      {fmtKey && legalityChecked > 0 && illegalList.length > 0 && (
+        <div style={{ marginTop: "0.6em", fontSize: 12, color: T.red }}>
+          {illegalList.length} card{illegalList.length === 1 ? "" : "s"} not legal in {format}:{" "}
+          {illegalList.map((i) => `${i.name} (${i.status.replace("_", " ")})`).join(", ")}
+        </div>
+      )}
+      {fmtKey && legalityChecked > 0 && illegalList.length === 0 && (
+        <div style={{ marginTop: "0.6em", fontSize: 12, color: T.green }}>
+          ✓ All cards legal in {format}.
+        </div>
       )}
 
       <div style={{ display: "flex", gap: "2em", flexWrap: "wrap", marginTop: "1.2em" }}>

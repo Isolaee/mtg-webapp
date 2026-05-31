@@ -11,4 +11,7 @@ pub struct Deck {
     pub sideboard: Option<String>,
     pub maybeboard: Option<String>,
     pub user_id: Option<String>,
+    #[serde(default)]
+    pub is_public: Option<i64>,
+    pub share_slug: Option<String>,
 }
