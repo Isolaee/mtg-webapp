@@ -88,7 +88,7 @@ pub async fn refresh_scryfall(pool: &SqlitePool) -> Result<u32> {
             Ok(_) => {} // card not in local DB — skip
             Err(e) => tracing::warn!("scryfall: upsert failed for {}: {e}", card.name),
         }
-        if seen % 5000 == 0 {
+        if seen.is_multiple_of(5000) {
             tracing::info!("scryfall: processed {seen}/{} ({updated} matched)", cards.len());
         }
     }

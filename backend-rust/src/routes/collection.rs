@@ -225,8 +225,7 @@ async fn enrich_card(pool: &SqlitePool, game: &str, card_id: &str) -> (String, O
         .fetch_optional(pool)
         .await
         .unwrap_or(None);
-        row.map(|(name, img)| (name, img))
-            .unwrap_or_else(|| (card_id.to_string(), None))
+        row.unwrap_or_else(|| (card_id.to_string(), None))
     }
 }
 

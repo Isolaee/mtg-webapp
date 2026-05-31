@@ -33,8 +33,8 @@ pub fn phash(img: &DynamicImage) -> i64 {
 fn dct1d(input: &[f64]) -> Vec<f64> {
     let n = input.len();
     let mut output = vec![0f64; n];
-    for k in 0..n {
-        output[k] = input
+    for (k, out) in output.iter_mut().enumerate() {
+        *out = input
             .iter()
             .enumerate()
             .map(|(i, &x)| {
