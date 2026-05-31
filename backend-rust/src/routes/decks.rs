@@ -12,16 +12,25 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx::SqlitePool;
 use std::sync::OnceLock;
+use uuid::Uuid;
 
 static CARD_RE: OnceLock<Regex> = OnceLock::new();
 fn card_regex() -> &'static Regex {
     CARD_RE.get_or_init(|| Regex::new(r"(?i)^(\d+)x?,?\s+(.+)$").unwrap())
 }
 
+// Short, unguessable share slug for public deck links (first 12 hex chars of a
+// v4 UUID — ~48 bits, ample for this scale).
+fn gen_slug() -> String {
+    Uuid::new_v4().simple().to_string()[..12].to_string()
+}
+
 pub fn router(pool: SqlitePool) -> Router {
     Router::new()
         .route("/decks", get(list_decks).post(save_deck))
         .route("/decks/:name", get(get_deck).delete(delete_deck))
+        // Unauthenticated read-only share view (only resolves public decks).
+        .route("/public/decks/:slug", get(get_public_deck))
         .route("/upload_deck", post(upload_deck))
         .with_state(pool)
 }
@@ -35,7 +44,13 @@ async fn list_decks(State(pool): State<SqlitePool>, headers: HeaderMap) -> impl 
         Ok(decks) => {
             let summaries: Vec<_> = decks
                 .iter()
-                .map(|d| json!({"name": d.name, "description": d.description, "format": d.format}))
+                .map(|d| json!({
+                    "name": d.name,
+                    "description": d.description,
+                    "format": d.format,
+                    "is_public": d.is_public.unwrap_or(0) != 0,
+                    "share_slug": d.share_slug,
+                }))
                 .collect();
             Json(json!({"decks": summaries})).into_response()
         }
@@ -56,29 +71,52 @@ async fn get_deck(
         Err(r) => return r,
     };
     match db::decks::find_by_name_and_user(&pool, &name, &user).await {
-        Ok(Some(deck)) => Json(json!({
-            "name": deck.name,
-            "description": deck.description,
-            "format": deck.format,
-            "commander": deck.commander.as_deref()
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok()),
-            "cards": deck.cards.as_deref()
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
-                .unwrap_or(json!([])),
-            "sideboard": deck.sideboard.as_deref()
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
-                .unwrap_or(json!([])),
-            "maybeboard": deck.maybeboard.as_deref()
-                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
-                .unwrap_or(json!([])),
-        }))
-        .into_response(),
+        Ok(Some(deck)) => Json(deck_to_json(&deck)).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Deck not found"}))).into_response(),
         Err(e) => {
             tracing::error!("decks db error: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
         }
     }
+}
+
+// Read-only public deck fetch by share slug. No auth required; only decks the
+// owner marked public are resolvable. Returns the owner's username so the share
+// page can attribute the deck.
+async fn get_public_deck(
+    State(pool): State<SqlitePool>,
+    Path(slug): Path<String>,
+) -> impl IntoResponse {
+    match db::decks::find_by_slug_public(&pool, &slug).await {
+        Ok(Some(deck)) => {
+            let mut body = deck_to_json(&deck);
+            body["owner"] = json!(deck.user_id);
+            Json(body).into_response()
+        }
+        Ok(None) => (StatusCode::NOT_FOUND, Json(json!({"msg": "Deck not found"}))).into_response(),
+        Err(e) => {
+            tracing::error!("decks db error: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()
+        }
+    }
+}
+
+// Serialise a stored Deck row (JSON-text blobs) into the API response shape.
+fn deck_to_json(deck: &crate::models::Deck) -> serde_json::Value {
+    let parse = |s: Option<&str>| {
+        s.and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+    };
+    json!({
+        "name": deck.name,
+        "description": deck.description,
+        "format": deck.format,
+        "is_public": deck.is_public.unwrap_or(0) != 0,
+        "share_slug": deck.share_slug,
+        "commander": parse(deck.commander.as_deref()),
+        "cards": parse(deck.cards.as_deref()).unwrap_or(json!([])),
+        "sideboard": parse(deck.sideboard.as_deref()).unwrap_or(json!([])),
+        "maybeboard": parse(deck.maybeboard.as_deref()).unwrap_or(json!([])),
+    })
 }
 
 #[derive(Deserialize)]
@@ -92,6 +130,8 @@ struct DeckSaveInput {
     sideboard: Vec<serde_json::Value>,
     #[serde(default)]
     maybeboard: Vec<serde_json::Value>,
+    #[serde(default)]
+    is_public: bool,
 }
 
 async fn save_deck(
@@ -110,6 +150,18 @@ async fn save_deck(
     let cards_str = serde_json::to_string(&input.cards).unwrap_or_default();
     let sideboard_str = serde_json::to_string(&input.sideboard).unwrap_or_default();
     let maybeboard_str = serde_json::to_string(&input.maybeboard).unwrap_or_default();
+    // Preserve a deck's share slug across re-saves so its public link stays
+    // stable; mint one on first save (every deck gets a slug, used only once
+    // the owner flips it public).
+    let share_slug = match db::decks::find_by_name_and_user(&pool, &input.name, &user).await {
+        Ok(existing) => existing
+            .and_then(|d| d.share_slug)
+            .unwrap_or_else(gen_slug),
+        Err(e) => {
+            tracing::error!("decks db error: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response();
+        }
+    };
     // Save-or-replace: drop any existing deck with the same name for this user so
     // re-saving updates in place instead of creating duplicate rows.
     if let Err(e) = db::decks::delete_by_name_and_user(&pool, &input.name, &user).await {
@@ -126,10 +178,12 @@ async fn save_deck(
         Some(&sideboard_str),
         Some(&maybeboard_str),
         &user,
+        input.is_public,
+        Some(&share_slug),
     )
     .await
     {
-        Ok(_) => (StatusCode::CREATED, Json(json!({"msg": "Deck saved"}))).into_response(),
+        Ok(_) => (StatusCode::CREATED, Json(json!({"msg": "Deck saved", "share_slug": share_slug, "is_public": input.is_public}))).into_response(),
         Err(e) => {
             tracing::error!("decks db error: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"msg": "Internal server error"}))).into_response()

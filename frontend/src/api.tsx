@@ -82,6 +82,8 @@ export interface MtgDeckSummary {
   name: string;
   description?: string;
   format: string;
+  is_public?: boolean;
+  share_slug?: string;
 }
 
 export interface MtgDeckFull {
@@ -92,6 +94,9 @@ export interface MtgDeckFull {
   cards: Card[];
   sideboard?: Card[];
   maybeboard?: Card[];
+  is_public?: boolean;
+  share_slug?: string;
+  owner?: string;
 }
 
 export interface MtgDeckSavePayload {
@@ -102,6 +107,13 @@ export interface MtgDeckSavePayload {
   cards: Card[];
   sideboard?: Card[];
   maybeboard?: Card[];
+  is_public?: boolean;
+}
+
+export interface MtgDeckSaveResult {
+  msg: string;
+  share_slug?: string;
+  is_public?: boolean;
 }
 
 export interface UserProfile {
@@ -154,10 +166,23 @@ export const fetchMtgDeck = async (name: string): Promise<MtgDeckFull> => {
   return response.data;
 };
 
-export const saveMtgDeck = async (payload: MtgDeckSavePayload): Promise<void> => {
-  await axios.post(`${API_BASE_URL}/decks`, payload, {
-    headers: authHeaders(),
-  });
+// Read-only public deck fetch by share slug — no auth header sent.
+export const fetchPublicDeck = async (slug: string): Promise<MtgDeckFull> => {
+  const response = await axios.get<MtgDeckFull>(
+    `${API_BASE_URL}/public/decks/${encodeURIComponent(slug)}`,
+  );
+  return response.data;
+};
+
+export const saveMtgDeck = async (
+  payload: MtgDeckSavePayload,
+): Promise<MtgDeckSaveResult> => {
+  const response = await axios.post<MtgDeckSaveResult>(
+    `${API_BASE_URL}/decks`,
+    payload,
+    { headers: authHeaders() },
+  );
+  return response.data;
 };
 
 export const deleteMtgDeck = async (name: string): Promise<void> => {
