@@ -8,13 +8,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Card,
   MtgDeckSummary,
-  fetchCards,
   fetchMtgDeckList,
   fetchMtgDeck,
   saveMtgDeck,
   authHeaders,
 } from "../../api";
-import UpgradesModal from "../../components/UpgradesModal";
 import { useAuth } from "../../context/AuthContext";
 import { T } from "../../theme";
 import PageHeader from "../../components/PageHeader";
@@ -96,7 +94,6 @@ const DeckBuilderPage: React.FC = () => {
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [upgradesOpen, setUpgradesOpen] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [shareSlug, setShareSlug] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
@@ -271,19 +268,6 @@ const DeckBuilderPage: React.FC = () => {
     setShareSlug(null);
   };
 
-  const handleApplySwap = async (cutName: string, addName: string) => {
-    // Look up the add card so the deck row carries full data (mana cost, type, etc.).
-    let addCard: Card | undefined;
-    try {
-      const matches = await fetchCards({ name: addName });
-      addCard = matches.find((c) => c.name.toLowerCase() === addName.toLowerCase());
-    } catch {
-      addCard = undefined;
-    }
-    const stub: Card = addCard ?? { name: addName };
-    setDeck((prev) => addOrIncrement(decrementOrRemove(prev, cutName), stub));
-  };
-
   const flatten = (entries: DeckEntry[]): Card[] =>
     entries.flatMap((e) => Array(e.count).fill(e.card));
 
@@ -400,6 +384,27 @@ const DeckBuilderPage: React.FC = () => {
   return (
     <div>
       <PageHeader title="MTG Deck Builder" accent={T.blue} />
+
+      {/* Create Deck — start a fresh, empty deck (confirms if the current one has content) */}
+      <div style={{ marginBottom: "0.75em" }}>
+        <button
+          onClick={handleClear}
+          style={{
+            padding: "0.55em 1.3em",
+            background: T.green,
+            color: T.bg,
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontWeight: 700,
+            fontSize: "0.85em",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          + Create Deck
+        </button>
+      </div>
 
       {/* Toolbar */}
       <div style={{ display: "flex", gap: "0.6em", alignItems: "center", marginBottom: "0.75em", flexWrap: "wrap" }}>
@@ -538,23 +543,6 @@ const DeckBuilderPage: React.FC = () => {
             }}
           >
             Analyze
-          </button>
-        )}
-        {username && deckName.trim() && (
-          <button
-            onClick={() => setUpgradesOpen(true)}
-            style={{
-              padding: "0.5em 1.2em",
-              background: "transparent",
-              color: T.gold,
-              border: `1px solid ${T.gold}66`,
-              borderRadius: 4,
-              fontWeight: 600,
-              fontSize: "0.85em",
-              cursor: "pointer",
-            }}
-          >
-            Suggest Upgrades
           </button>
         )}
         <label
@@ -820,15 +808,6 @@ const DeckBuilderPage: React.FC = () => {
 
       <DeckStats cards={mainCards} sideboardCount={sideboardAllowed ? sideTotal : undefined} format={format} />
       <StackVisualizer cards={mainCards} format={format} commanderName={commander?.name ?? ""} />
-
-      <UpgradesModal
-        isOpen={upgradesOpen}
-        onClose={() => setUpgradesOpen(false)}
-        deckName={deckName}
-        format={format}
-        isEmpty={deck.length === 0}
-        onApplySwap={handleApplySwap}
-      />
     </div>
   );
 };
