@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Card } from "../api";
 import { T } from "../theme";
+import CardImageModal from "./CardImageModal";
 
 interface FoundCardsProps {
   suggestions: Card[];
@@ -23,6 +24,9 @@ const FoundCardsContainer: React.FC<FoundCardsProps> = ({
 }) => {
   const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  // Tapping a row opens a full-image modal — the touch path, since the hover
+  // preview never fires on Android.
+  const [modal, setModal] = useState<{ src: string; alt: string } | null>(null);
 
   if (suggestions.length === 0) return null;
 
@@ -70,16 +74,21 @@ const FoundCardsContainer: React.FC<FoundCardsProps> = ({
               gap: "0.6em",
               padding: "0.4em 0.8em",
               borderBottom: `1px solid ${T.border}`,
+              cursor: card.image ? "pointer" : "default",
             }}
             onMouseEnter={() =>
               card.image ? setPreview({ src: card.image, alt: card.name }) : setPreview(null)
             }
+            onClick={() => card.image && setModal({ src: card.image, alt: card.name })}
           >
             <span style={{ fontWeight: 500, flex: 1, fontSize: 13, color: T.textBright }}>
               {card.name}
             </span>
             <button
-              onClick={() => onAddToDeck(card)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToDeck(card);
+              }}
               style={{
                 padding: "2px 10px",
                 fontSize: 12,
@@ -95,7 +104,10 @@ const FoundCardsContainer: React.FC<FoundCardsProps> = ({
             </button>
             {format === "commander" && !commanderName && onAddCommander && (
               <button
-                onClick={() => onAddCommander(card)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddCommander(card);
+                }}
                 style={{
                   padding: "2px 8px",
                   fontSize: 12,
@@ -131,6 +143,10 @@ const FoundCardsContainer: React.FC<FoundCardsProps> = ({
             pointerEvents: "none",
           }}
         />
+      )}
+
+      {modal && (
+        <CardImageModal src={modal.src} alt={modal.alt} onClose={() => setModal(null)} />
       )}
     </div>
   );

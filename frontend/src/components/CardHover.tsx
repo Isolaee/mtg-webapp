@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { Card, fetchCards } from "../api";
 import { T } from "../theme";
+import CardImageModal from "./CardImageModal";
 
 // Module-level cache so the same card name is only fetched once across the
 // whole session (and across every CardHover instance).
@@ -32,6 +33,9 @@ interface Props {
 const CardHover: React.FC<Props> = ({ name, style }) => {
   const [card, setCard] = useState<Card | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  // Tapping the name opens a full-image modal — the touch path, since the hover
+  // preview never fires on Android.
+  const [modalSrc, setModalSrc] = useState<string | null>(null);
   const anchorRef = useRef<HTMLSpanElement>(null);
 
   const PREVIEW_W = 240;
@@ -66,14 +70,21 @@ const CardHover: React.FC<Props> = ({ name, style }) => {
     setPos(null);
   };
 
+  const handleTap = async () => {
+    setPos(null);
+    const resolved = card ?? (await resolveCard(name));
+    if (resolved?.image) setModalSrc(resolved.image);
+  };
+
   return (
     <>
       <span
         ref={anchorRef}
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
+        onClick={handleTap}
         style={{
-          cursor: "help",
+          cursor: "pointer",
           textDecoration: "underline dotted",
           textUnderlineOffset: 2,
           ...style,
@@ -118,6 +129,9 @@ const CardHover: React.FC<Props> = ({ name, style }) => {
             </div>
           )}
         </div>
+      )}
+      {modalSrc && (
+        <CardImageModal src={modalSrc} alt={name} onClose={() => setModalSrc(null)} />
       )}
     </>
   );
