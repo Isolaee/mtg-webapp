@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -31,3 +33,9 @@ jobs:
         env:
           SQLX_OFFLINE: "true"
         run: cargo test --lib --bins
+
+      - name: cargo clippy
+        working-directory: backend-rust
+        env:
+          SQLX_OFFLINE: "true"
+        run: cargo clippy --all-targets -- -D warnings
