@@ -50,12 +50,15 @@ const MyDecksPage: React.FC = () => {
     setRbDecks((prev) => prev.filter((d) => d.name !== name));
   };
 
+  const createDeck = () =>
+    navigate(tab === "mtg" ? "/deck-builder" : "/riftbound/deck-builder");
+
   return (
     <div>
       <PageHeader title="My Decks" />
 
-      {/* Tabs */}
-      <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: "1.8em" }}>
+      {/* Tabs + Create Deck CTA */}
+      <div style={{ display: "flex", alignItems: "center", borderBottom: `1px solid ${T.border}`, marginBottom: "1.8em" }}>
         {(["mtg", "riftbound"] as Tab[]).map((t) => {
           const c = t === "mtg" ? T.blue : T.purple;
           return (
@@ -81,6 +84,25 @@ const MyDecksPage: React.FC = () => {
             </button>
           );
         })}
+        <button
+          onClick={createDeck}
+          style={{
+            marginLeft: "auto",
+            marginBottom: 6,
+            padding: "0.5em 1.2em",
+            background: T.green,
+            color: T.bg,
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontWeight: 700,
+            fontSize: "0.8em",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          + Create Deck
+        </button>
       </div>
 
       {loading && <p style={{ color: T.textDim }}>Loading…</p>}
@@ -93,6 +115,7 @@ const MyDecksPage: React.FC = () => {
           emptyMsg="No MTG decks saved yet. Head to the deck builder to get started."
           onDelete={handleDeleteMtg}
           onOpen={(name) => navigate(`/deck-builder?load=${encodeURIComponent(name)}`)}
+          onCreate={createDeck}
         />
       )}
 
@@ -103,6 +126,7 @@ const MyDecksPage: React.FC = () => {
           emptyMsg="No Riftbound decks saved yet. Head to the deck builder to get started."
           onDelete={handleDeleteRb}
           onOpen={(name) => navigate(`/riftbound/deck-builder?load=${encodeURIComponent(name)}`)}
+          onCreate={createDeck}
         />
       )}
 
@@ -124,9 +148,31 @@ const DeckGrid: React.FC<{
   emptyMsg: string;
   onDelete: (name: string) => void;
   onOpen: (name: string) => void;
-}> = ({ decks, color, emptyMsg, onDelete, onOpen }) => {
+  onCreate: () => void;
+}> = ({ decks, color, emptyMsg, onDelete, onOpen, onCreate }) => {
   if (decks.length === 0) {
-    return <p style={{ color: T.textDim, fontStyle: "italic" }}>{emptyMsg}</p>;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "1em", alignItems: "flex-start" }}>
+        <p style={{ color: T.textDim, fontStyle: "italic", margin: 0 }}>{emptyMsg}</p>
+        <button
+          onClick={onCreate}
+          style={{
+            padding: "0.6em 1.4em",
+            background: color,
+            color: T.bg,
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            fontSize: "0.85em",
+          }}
+        >
+          + Create your first deck
+        </button>
+      </div>
+    );
   }
 
   return (
