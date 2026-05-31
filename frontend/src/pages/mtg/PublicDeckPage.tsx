@@ -1,10 +1,55 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Card, MtgDeckFull, fetchPublicDeck } from "../../api";
 import DeckStats from "../../components/DeckStats";
 import StackVisualizer from "../../components/visualStack";
 import PageHeader from "../../components/PageHeader";
+import { useAuth } from "../../context/AuthContext";
 import { T } from "../../theme";
+
+// Call-to-action row so visitors landing on a shared deck (often logged out) have a
+// way forward instead of a read-only dead end.
+const DeckCallToAction: React.FC = () => {
+  const { username } = useAuth();
+  const ctas: { to: string; label: string; color: string }[] = [
+    { to: "/deck-builder", label: "Build Your Own Deck", color: T.blue },
+    { to: "/cards", label: "Browse Cards", color: T.gold },
+  ];
+  if (!username) ctas.push({ to: "/login", label: "Log In", color: T.purple });
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.7em",
+        flexWrap: "wrap",
+        marginTop: "1.5em",
+        paddingTop: "1.5em",
+        borderTop: `1px solid ${T.border}`,
+      }}
+    >
+      {ctas.map(({ to, label, color }, i) => (
+        <Link
+          key={to}
+          to={to}
+          style={{
+            padding: "0.55em 1.2em",
+            background: i === 0 ? `${color}CC` : "transparent",
+            color: i === 0 ? T.bg : color,
+            border: `1px solid ${color}${i === 0 ? "" : "66"}`,
+            borderRadius: 4,
+            fontWeight: 700,
+            fontSize: "0.85em",
+            textDecoration: "none",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
+  );
+};
 
 interface DeckEntry {
   card: Card;
@@ -93,6 +138,7 @@ const PublicDeckPage: React.FC = () => {
         <div style={{ padding: "1em", color: T.red }}>
           {error ?? "Deck not found."}
         </div>
+        <DeckCallToAction />
       </div>
     );
   }
@@ -158,6 +204,7 @@ const PublicDeckPage: React.FC = () => {
         format={deck.format}
         commanderName={deck.commander?.name ?? ""}
       />
+      <DeckCallToAction />
     </div>
   );
 };

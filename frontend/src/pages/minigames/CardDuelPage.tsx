@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   fetchDuelLeaderboard,
   fetchDuelPair,
@@ -111,6 +112,12 @@ const CardDuelPage: React.FC = () => {
 
   return (
     <div>
+      <Link
+        to="/minigames"
+        style={{ display: "inline-block", marginBottom: "0.6em", color: T.textDim, fontSize: 13, textDecoration: "none" }}
+      >
+        ← Minigames
+      </Link>
       <h1 style={{ marginBottom: "0.3em", color: accent }}>Which Card Is Stronger?</h1>
       <p style={{ color: T.textDim, marginTop: 0, marginBottom: "1.5em" }}>
         Pick the card you think is stronger. Every vote nudges its community ELO rating.

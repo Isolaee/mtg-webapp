@@ -4,7 +4,7 @@ import FoundCardsComponent from "../../components/FoundCardsComponent";
 import StackVisualizer from "../../components/visualStack";
 import DeckStats from "../../components/DeckStats";
 import FormatSelection from "../../components/FormatSelection";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Card,
   MtgDeckSummary,
@@ -445,6 +445,11 @@ const DeckBuilderPage: React.FC = () => {
         {saveMsg && (
           <span style={{ fontSize: 13, color: saveMsg === "Deck saved!" ? T.green : T.red }}>
             {saveMsg}
+            {saveMsg === "Deck saved!" && (
+              <Link to="/my-decks" style={{ marginLeft: "0.6em", color: T.gold, fontWeight: 600 }}>
+                View in My Decks →
+              </Link>
+            )}
           </span>
         )}
         <label
