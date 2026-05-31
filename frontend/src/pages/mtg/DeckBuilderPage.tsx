@@ -16,6 +16,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { T } from "../../theme";
 import PageHeader from "../../components/PageHeader";
+import CreateDeckModal, { CreateDeckMeta } from "../../components/CreateDeckModal";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL ?? "http://localhost:8080/api";
 
@@ -100,6 +101,7 @@ const DeckBuilderPage: React.FC = () => {
   const [exportFormat, setExportFormat] = useState<ExportFormat>("plain");
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const sideboardAllowed = SIDEBOARD_FORMATS.has(format);
   const setters: Record<Board, React.Dispatch<React.SetStateAction<DeckEntry[]>>> = {
@@ -115,12 +117,22 @@ const DeckBuilderPage: React.FC = () => {
 
   useEffect(() => {
     const preload = searchParams.get("load");
-    if (!preload) return;
-    setLoading(true);
-    fetchMtgDeck(preload)
-      .then((d) => applyLoadedDeck(d))
-      .catch(() => setLoadError("Failed to load deck."))
-      .finally(() => setLoading(false));
+    if (preload) {
+      setLoading(true);
+      fetchMtgDeck(preload)
+        .then((d) => applyLoadedDeck(d))
+        .catch(() => setLoadError("Failed to load deck."))
+        .finally(() => setLoading(false));
+      return;
+    }
+    // New-deck prefill from the Create Deck dialog (via My Decks navigation).
+    const n = searchParams.get("name");
+    const f = searchParams.get("format");
+    const d = searchParams.get("description");
+    if (n !== null) setDeckName(n);
+    if (f) setFormat(f);
+    if (d !== null) setDeckDescription(d);
+    if (searchParams.get("public") === "1" && username) setIsPublic(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyLoadedDeck = (d: {
@@ -268,6 +280,24 @@ const DeckBuilderPage: React.FC = () => {
     setShareSlug(null);
   };
 
+  // Apply metadata from the Create Deck dialog to a fresh deck. We're already
+  // mounted on the builder, so set state directly (the mount effect won't re-fire).
+  const handleCreateDeck = (meta: CreateDeckMeta) => {
+    setDeck([]);
+    setSideboard([]);
+    setMaybeboard([]);
+    setCommander(null);
+    setSuggestions([]);
+    setAddTarget("main");
+    setLoadOpen(false);
+    setExportOpen(false);
+    setShareSlug(null);
+    setDeckName(meta.name);
+    setFormat(meta.format);
+    setDeckDescription(meta.description);
+    setIsPublic(meta.isPublic && !!username);
+  };
+
   const flatten = (entries: DeckEntry[]): Card[] =>
     entries.flatMap((e) => Array(e.count).fill(e.card));
 
@@ -385,10 +415,18 @@ const DeckBuilderPage: React.FC = () => {
     <div>
       <PageHeader title="MTG Deck Builder" accent={T.blue} />
 
-      {/* Create Deck — start a fresh, empty deck (confirms if the current one has content) */}
+      <CreateDeckModal
+        isOpen={createOpen}
+        game="mtg"
+        loggedIn={!!username}
+        onClose={() => setCreateOpen(false)}
+        onCreate={handleCreateDeck}
+      />
+
+      {/* Create Deck — prompt for name/format/description, then start a fresh deck */}
       <div style={{ marginBottom: "0.75em" }}>
         <button
-          onClick={handleClear}
+          onClick={() => setCreateOpen(true)}
           style={{
             padding: "0.55em 1.3em",
             background: T.green,

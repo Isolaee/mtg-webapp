@@ -14,6 +14,7 @@ import RbVisualStack, { DeckEntry } from "../../components/riftbound/RbVisualSta
 import RbDeckStats, { validateDeck } from "../../components/riftbound/RbDeckStats";
 import { T } from "../../theme";
 import PageHeader from "../../components/PageHeader";
+import CreateDeckModal, { CreateDeckMeta } from "../../components/CreateDeckModal";
 
 const FACTIONS = ["", "body", "calm", "chaos", "colorless", "fury", "mind", "order"];
 const TYPES = ["", "Unit", "Spell", "Gear", "Rune", "Legend", "Battlefield"];
@@ -39,6 +40,8 @@ const DeckBuilderPage: React.FC = () => {
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
 
   const [deckName, setDeckName] = useState("");
+  const [deckDescription, setDeckDescription] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
   const [champion, setChampion] = useState<RbCard | null>(null);
   const [mainDeck, setMainDeck] = useState<DeckEntry[]>([]);
   const [runeDeck, setRuneDeck] = useState<DeckEntry[]>([]);
@@ -53,7 +56,14 @@ const DeckBuilderPage: React.FC = () => {
 
   useEffect(() => {
     const preload = searchParams.get("load");
-    if (!preload) return;
+    if (!preload) {
+      // New-deck prefill from the Create Deck dialog (via My Decks navigation).
+      const n = searchParams.get("name");
+      const d = searchParams.get("description");
+      if (n !== null) setDeckName(n);
+      if (d !== null) setDeckDescription(d);
+      return;
+    }
     setLoading(true);
     fetchRbDeck(preload)
       .then(async (deck) => {
@@ -66,6 +76,7 @@ const DeckBuilderPage: React.FC = () => {
         const cardMap = new Map<string, RbCard>();
         cardResults.forEach((r) => { if (r.status === "fulfilled") cardMap.set(r.value.id, r.value); });
         setDeckName(deck.name);
+        setDeckDescription(deck.description ?? "");
         setChampion(deck.champion ? (cardMap.get(deck.champion) ?? null) : null);
         setMainDeck((deck.main_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
         setRuneDeck((deck.rune_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
@@ -102,6 +113,7 @@ const DeckBuilderPage: React.FC = () => {
       cardResults.forEach((r) => { if (r.status === "fulfilled") cardMap.set(r.value.id, r.value); });
 
       setDeckName(deck.name);
+      setDeckDescription(deck.description ?? "");
       setChampion(deck.champion ? (cardMap.get(deck.champion) ?? null) : null);
       setMainDeck((deck.main_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
       setRuneDeck((deck.rune_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
@@ -153,10 +165,21 @@ const DeckBuilderPage: React.FC = () => {
   const saveDeck = async () => {
     if (!deckName.trim()) return;
     try {
-      await saveRbDeck({ name: deckName, format: "standard", champion: champion?.id, main_deck: mainDeck.map((e) => ({ id: e.card.id, count: e.count })), rune_deck: runeDeck.map((e) => ({ id: e.card.id, count: e.count })), battlefields: battlefields.map((c) => c.id) });
+      await saveRbDeck({ name: deckName, format: "standard", description: deckDescription || undefined, champion: champion?.id, main_deck: mainDeck.map((e) => ({ id: e.card.id, count: e.count })), rune_deck: runeDeck.map((e) => ({ id: e.card.id, count: e.count })), battlefields: battlefields.map((c) => c.id) });
       setSaveMsg("Deck saved!");
     } catch { setSaveMsg("Save failed."); }
     setTimeout(() => setSaveMsg(null), 3000);
+  };
+
+  // Apply metadata from the Create Deck dialog to a fresh deck.
+  const handleCreateDeck = (meta: CreateDeckMeta) => {
+    setChampion(null);
+    setMainDeck([]);
+    setRuneDeck([]);
+    setBattlefields([]);
+    setLoadOpen(false);
+    setDeckName(meta.name);
+    setDeckDescription(meta.description);
   };
 
   const mainTotal = mainDeck.reduce((n, e) => n + e.count, 0);
@@ -167,6 +190,35 @@ const DeckBuilderPage: React.FC = () => {
     <div>
       <PageHeader title="Riftbound Deck Builder" accent={T.purple} />
 
+      <CreateDeckModal
+        isOpen={createOpen}
+        game="riftbound"
+        loggedIn={!!username}
+        onClose={() => setCreateOpen(false)}
+        onCreate={handleCreateDeck}
+      />
+
+      {/* Create Deck — prompt for name/description, then start a fresh deck */}
+      <div style={{ marginBottom: "0.75em" }}>
+        <button
+          onClick={() => setCreateOpen(true)}
+          style={{
+            padding: "0.55em 1.3em",
+            background: T.green,
+            color: T.bg,
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontWeight: 700,
+            fontSize: "0.85em",
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          + Create Deck
+        </button>
+      </div>
+
       {/* Toolbar */}
       <div style={{ display: "flex", gap: "0.6em", alignItems: "center", marginBottom: "0.75em", flexWrap: "wrap" }}>
         <input
@@ -174,6 +226,13 @@ const DeckBuilderPage: React.FC = () => {
           placeholder="Deck name…"
           value={deckName}
           onChange={(e) => setDeckName(e.target.value)}
+          style={{ width: 200 }}
+        />
+        <input
+          type="text"
+          placeholder="Description (optional)"
+          value={deckDescription}
+          onChange={(e) => setDeckDescription(e.target.value)}
           style={{ width: 200 }}
         />
         <button
