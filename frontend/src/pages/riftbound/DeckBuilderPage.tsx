@@ -53,6 +53,8 @@ const DeckBuilderPage: React.FC = () => {
   const [loadOpen, setLoadOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // The builder UI stays hidden until a deck is started (created, prefilled, or loaded).
+  const [deckStarted, setDeckStarted] = useState(false);
 
   useEffect(() => {
     const preload = searchParams.get("load");
@@ -60,7 +62,10 @@ const DeckBuilderPage: React.FC = () => {
       // New-deck prefill from the Create Deck dialog (via My Decks navigation).
       const n = searchParams.get("name");
       const d = searchParams.get("description");
-      if (n !== null) setDeckName(n);
+      if (n !== null) {
+        setDeckName(n);
+        setDeckStarted(true);
+      }
       if (d !== null) setDeckDescription(d);
       return;
     }
@@ -81,6 +86,7 @@ const DeckBuilderPage: React.FC = () => {
         setMainDeck((deck.main_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
         setRuneDeck((deck.rune_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
         setBattlefields((deck.battlefields ?? []).filter((id) => cardMap.has(id)).map((id) => cardMap.get(id)!));
+        setDeckStarted(true);
       })
       .catch(() => setLoadError("Failed to load deck."))
       .finally(() => setLoading(false));
@@ -118,6 +124,7 @@ const DeckBuilderPage: React.FC = () => {
       setMainDeck((deck.main_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
       setRuneDeck((deck.rune_deck ?? []).filter((e) => cardMap.has(e.id)).map((e) => ({ card: cardMap.get(e.id)!, count: e.count })));
       setBattlefields((deck.battlefields ?? []).filter((id) => cardMap.has(id)).map((id) => cardMap.get(id)!));
+      setDeckStarted(true);
       setLoadOpen(false);
       setSelectedDeck("");
     } catch {
@@ -180,6 +187,7 @@ const DeckBuilderPage: React.FC = () => {
     setLoadOpen(false);
     setDeckName(meta.name);
     setDeckDescription(meta.description);
+    setDeckStarted(true);
   };
 
   const mainTotal = mainDeck.reduce((n, e) => n + e.count, 0);
@@ -217,6 +225,15 @@ const DeckBuilderPage: React.FC = () => {
         >
           + Create Deck
         </button>
+      </div>
+
+      {deckStarted && (
+      <>
+      {/* Save note — the deck only persists when you press Save Deck */}
+      <div style={{ marginBottom: "0.75em", padding: "0.5em 0.9em", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 13, color: T.textDim }}>
+        This deck isn’t stored until you press{" "}
+        <strong style={{ color: T.textBright }}>Save Deck</strong> — and only registered users can save.
+        {!username && " Log in or register to save it."}
       </div>
 
       {/* Toolbar */}
@@ -417,6 +434,8 @@ const DeckBuilderPage: React.FC = () => {
 
       <RbDeckStats champion={champion} mainDeck={mainDeck} runeDeck={runeDeck} battlefields={battlefields} />
       <RbVisualStack champion={champion} mainDeck={mainDeck} runeDeck={runeDeck} battlefields={battlefields} />
+      </>
+      )}
 
       {/* Fixed card preview — follows cursor, always in viewport */}
       {preview && (() => {

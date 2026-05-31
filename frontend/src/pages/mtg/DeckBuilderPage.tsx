@@ -102,6 +102,8 @@ const DeckBuilderPage: React.FC = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  // The builder UI stays hidden until a deck is started (created, prefilled, or loaded).
+  const [deckStarted, setDeckStarted] = useState(false);
 
   const sideboardAllowed = SIDEBOARD_FORMATS.has(format);
   const setters: Record<Board, React.Dispatch<React.SetStateAction<DeckEntry[]>>> = {
@@ -129,7 +131,10 @@ const DeckBuilderPage: React.FC = () => {
     const n = searchParams.get("name");
     const f = searchParams.get("format");
     const d = searchParams.get("description");
-    if (n !== null) setDeckName(n);
+    if (n !== null) {
+      setDeckName(n);
+      setDeckStarted(true);
+    }
     if (f) setFormat(f);
     if (d !== null) setDeckDescription(d);
     if (searchParams.get("public") === "1" && username) setIsPublic(true);
@@ -155,6 +160,7 @@ const DeckBuilderPage: React.FC = () => {
     setMaybeboard(groupEntries(d.maybeboard ?? []));
     setIsPublic(d.is_public ?? false);
     setShareSlug(d.share_slug ?? null);
+    setDeckStarted(true);
   };
 
   const openLoadPanel = async () => {
@@ -278,6 +284,7 @@ const DeckBuilderPage: React.FC = () => {
     setExportOpen(false);
     setIsPublic(false);
     setShareSlug(null);
+    setDeckStarted(false);
   };
 
   // Apply metadata from the Create Deck dialog to a fresh deck. We're already
@@ -296,6 +303,7 @@ const DeckBuilderPage: React.FC = () => {
     setFormat(meta.format);
     setDeckDescription(meta.description);
     setIsPublic(meta.isPublic && !!username);
+    setDeckStarted(true);
   };
 
   const flatten = (entries: DeckEntry[]): Card[] =>
@@ -442,6 +450,15 @@ const DeckBuilderPage: React.FC = () => {
         >
           + Create Deck
         </button>
+      </div>
+
+      {deckStarted && (
+      <>
+      {/* Save note — the deck only persists when you press Save Deck */}
+      <div style={{ marginBottom: "0.75em", padding: "0.5em 0.9em", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 6, fontSize: 13, color: T.textDim }}>
+        This deck isn’t stored until you press{" "}
+        <strong style={{ color: T.textBright }}>Save Deck</strong> — and only registered users can save.
+        {!username && " Log in or register to save it."}
       </div>
 
       {/* Toolbar */}
@@ -851,6 +868,8 @@ const DeckBuilderPage: React.FC = () => {
 
       <DeckStats cards={mainCards} sideboardCount={sideboardAllowed ? sideTotal : undefined} format={format} />
       <StackVisualizer cards={mainCards} format={format} commanderName={commander?.name ?? ""} />
+      </>
+      )}
     </div>
   );
 };
