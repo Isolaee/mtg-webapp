@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
             }
         }
         let completed = done + errors;
-        if completed % 500 == 0 {
+        if completed.is_multiple_of(500) {
             println!("  {completed}/{total} ({errors} errors)");
         }
     }

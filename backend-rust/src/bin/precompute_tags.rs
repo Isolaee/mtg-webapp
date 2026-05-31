@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         } else {
             mtg_done += 1;
         }
-        if mtg_done % 5000 == 0 {
+        if mtg_done.is_multiple_of(5000) {
             tracing::info!("mtg: {mtg_done}/{}", mtg.len());
         }
     }
