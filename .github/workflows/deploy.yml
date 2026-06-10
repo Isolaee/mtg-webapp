@@ -128,11 +128,14 @@ jobs:
 
       - name: Upload to S3
         run: |
+          # --exclude "deploy/*" keeps --delete from wiping the backend deploy
+          # artifacts staged under deploy/ (binaries + the out-of-band card DB)
           aws s3 sync frontend/build/ \
             s3://${{ needs.infra.outputs.frontend-bucket }}/ \
             --delete \
             --cache-control "public,max-age=31536000,immutable" \
-            --exclude "index.html"
+            --exclude "index.html" \
+            --exclude "deploy/*"
           # index.html must not be cached — it references hashed asset filenames
           aws s3 cp frontend/build/index.html \
             s3://${{ needs.infra.outputs.frontend-bucket }}/index.html \
