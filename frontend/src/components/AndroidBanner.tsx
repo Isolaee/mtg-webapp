@@ -3,8 +3,11 @@ import { Capacitor } from "@capacitor/core";
 import { AdMob, BannerAdSize, BannerAdPosition } from "@capacitor-community/admob";
 import { useAuth } from "../context/AuthContext";
 
-// Replace with your AdMob Banner Ad Unit ID from admob.google.com
-const ADMOB_BANNER_ID = "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX";
+// Real banner ad-unit ID comes from the build env (GHA variable); without it we
+// fall back to Google's official test banner unit, which always fills.
+const ADMOB_BANNER_ID =
+  process.env.REACT_APP_ADMOB_BANNER_ID || "ca-app-pub-3940256099942544/6300978111";
+const IS_TESTING = !process.env.REACT_APP_ADMOB_BANNER_ID;
 
 // Initialize the AdMob SDK exactly once. The native banner plugin only sets up
 // its container ViewGroup inside initialize(); calling showBanner() before that
@@ -14,7 +17,7 @@ const ADMOB_BANNER_ID = "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX";
 let initPromise: Promise<void> | null = null;
 function ensureAdMobInitialized(): Promise<void> {
   if (!initPromise) {
-    initPromise = AdMob.initialize({ initializeForTesting: true }).catch((err) => {
+    initPromise = AdMob.initialize({ initializeForTesting: IS_TESTING }).catch((err) => {
       // Allow a retry on a later mount if initialization failed.
       initPromise = null;
       throw err;
@@ -42,7 +45,7 @@ const AndroidBanner: React.FC = () => {
           adSize: BannerAdSize.ADAPTIVE_BANNER,
           position: BannerAdPosition.BOTTOM_CENTER,
           margin: 0,
-          isTesting: false,
+          isTesting: IS_TESTING,
         });
       })
       .catch(() => {});

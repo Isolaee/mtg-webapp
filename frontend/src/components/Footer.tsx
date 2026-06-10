@@ -4,7 +4,8 @@ import AdSlot from "./AdSlot";
 import { T } from "../theme";
 
 const KOFI_URL = "https://ko-fi.com/oracle_singularity";
-const SLOT_ID_FOOTER = "XXXXXXXXXX"; // replace with AdSense footer ad unit slot ID
+// AdSense footer ad-unit slot ID, from the build env; AdSlot renders nothing when unset
+const SLOT_ID_FOOTER = process.env.REACT_APP_ADSENSE_SLOT_FOOTER || "";
 
 const Footer: React.FC = () => (
   <footer
