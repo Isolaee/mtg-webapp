@@ -7,19 +7,35 @@ interface AdSlotProps {
   style?: React.CSSProperties;
 }
 
-const AD_CLIENT = "ca-pub-XXXXXXXXXXXXXXXX"; // replace with your AdSense publisher ID
+// AdSense publisher ID comes from the build env (GHA variable); when unset
+// (dev, forks, pre-approval builds) AdSlot renders nothing.
+const AD_CLIENT = process.env.REACT_APP_ADSENSE_CLIENT || "";
+
+// Load the adsbygoogle script once, lazily, so the client ID can be env-driven
+// (a static tag in index.html can't be — CRA leaves unset %VARS% as literal text).
+function ensureAdSenseScript() {
+  if (document.querySelector("script[data-adsbygoogle-loader]")) return;
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}`;
+  script.crossOrigin = "anonymous";
+  script.setAttribute("data-adsbygoogle-loader", "");
+  document.head.appendChild(script);
+}
 
 const AdSlot: React.FC<AdSlotProps> = ({ slotId, style }) => {
   const { isPremium } = useAuth();
 
-  // No ads on Android (AdSense ToS), in dev, or for premium users
+  // No ads on Android (AdSense ToS), in dev, without real IDs, or for premium users
   if (Capacitor.isNativePlatform()) return null;
   if (process.env.NODE_ENV === "development") return null;
+  if (!AD_CLIENT || !slotId) return null;
   if (isPremium) return null;
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     try {
+      ensureAdSenseScript();
       ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
     } catch {}
   }, []);

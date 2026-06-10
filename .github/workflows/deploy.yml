@@ -109,6 +109,11 @@ jobs:
         working-directory: frontend
         env:
           REACT_APP_API_URL: ${{ vars.REACT_APP_API_URL }}
+          # AdSense IDs (env: production); empty until the account is approved —
+          # AdSlot renders nothing when unset
+          REACT_APP_ADSENSE_CLIENT: ${{ vars.REACT_APP_ADSENSE_CLIENT }}
+          REACT_APP_ADSENSE_SLOT_LEADERBOARD: ${{ vars.REACT_APP_ADSENSE_SLOT_LEADERBOARD }}
+          REACT_APP_ADSENSE_SLOT_FOOTER: ${{ vars.REACT_APP_ADSENSE_SLOT_FOOTER }}
           CI: false # treat warnings as warnings, not errors
         run: |
           npm ci

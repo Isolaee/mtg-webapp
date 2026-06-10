@@ -26,7 +26,8 @@ import CardDuelPage from "./pages/minigames/CardDuelPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
-const SLOT_ID_LEADERBOARD = "XXXXXXXXXX"; // replace with AdSense leaderboard ad unit slot ID
+// AdSense leaderboard ad-unit slot ID, from the build env; AdSlot renders nothing when unset
+const SLOT_ID_LEADERBOARD = process.env.REACT_APP_ADSENSE_SLOT_LEADERBOARD || "";
 
 const AppInner: React.FC = () => {
   return (

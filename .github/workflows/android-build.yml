@@ -32,6 +32,8 @@ jobs:
         working-directory: frontend
         env:
           REACT_APP_API_URL: ${{ vars.REACT_APP_API_URL }}
+          # Real AdMob banner unit ID (env: production); empty → Google test banner + test mode
+          REACT_APP_ADMOB_BANNER_ID: ${{ vars.REACT_APP_ADMOB_BANNER_ID }}
           CI: false
         run: |
           npm ci
@@ -56,6 +58,8 @@ jobs:
           # which Play Console requires for every upload.
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: ${{ inputs.version_name }}
+          # Real AdMob App ID (env: production); empty → Google test App ID in the manifest
+          ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
         run: |
           chmod +x gradlew
           ./gradlew bundleRelease
